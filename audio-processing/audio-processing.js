@@ -41,6 +41,8 @@
             usePreviewEnd: "使用当前时间为结束",
             previewRange: "预览片段范围",
             settingsTitle: "处理设置",
+            outputNameLabel: "输出文件名（不含后缀，留空自动命名）",
+            outputNamePlaceholder: "留空使用自动名称",
             convertFormat: "输出格式",
             quality: "编码参数",
             advancedArgs: "高级 FFmpeg 参数",
@@ -129,6 +131,8 @@
             usePreviewEnd: "Use Current Time as End",
             previewRange: "Preview Range",
             settingsTitle: "Settings",
+            outputNameLabel: "Output file name (no extension; blank for automatic)",
+            outputNamePlaceholder: "Leave blank for automatic name",
             convertFormat: "Output format",
             quality: "Encoding args",
             advancedArgs: "Advanced FFmpeg args",
@@ -215,6 +219,7 @@
     var running = false;
     var cancelled = false;
     var activeAction = "";
+    var customOutputBase = null;
     var downloadUrl = "";
     var logTimer = 0;
     var workerClient = null;
@@ -303,6 +308,8 @@
         setText("#usePreviewEnd", "usePreviewEnd");
         setText("#previewRange", "previewRange");
         setText("#settingsTitle", "settingsTitle");
+        setText("#outputNameLabel", "outputNameLabel");
+        $("#outputBaseName").placeholder = t("outputNamePlaceholder");
         setText("#convertFormatLabel", "convertFormat");
         setText("#qualityLabel", "quality");
         setText("#advancedArgsLabel", "advancedArgs");
@@ -386,7 +393,7 @@
         return match ? match[1].toLowerCase() : "bin";
     }
     function fileName(sourceName, suffix) {
-        return sourceName.replace(/\.[^.]+$/, "") + "." + suffix;
+        return customOutputBase ? customOutputBase + "." + suffix.split(".").pop() : sourceName.replace(/\.[^.]+$/, "") + "." + suffix;
     }
     function safeZipName(name) {
         return (name || "output").replace(/[\\/:*?"<>|]+/g, "-");
@@ -505,7 +512,7 @@
             showDownload(files[0].blob, files[0].name);
             return;
         }
-        showDownload(await createZip(files), archiveName);
+        showDownload(await createZip(files), customOutputBase ? customOutputBase + ".zip" : archiveName);
     }
     function splitArgs(text) {
         var matches = (text || "").match(/"[^"]*"|'[^']*'|\S+/g) || [];
@@ -953,7 +960,7 @@
             throw new Error(t("needFile"));
         var core = await getCore();
         await core.reset();
-        var inputName = "input." + getExt(targetFile.name);
+        var inputName = "__wt_input_" + Math.random().toString(36).slice(2) + "." + getExt(targetFile.name);
         await writeFileToCore(core, inputName, targetFile);
         return { core: core, inputName: inputName, file: targetFile };
     }
@@ -1148,6 +1155,19 @@
     async function runAction(action) {
         if (running)
             return;
+        var outputNameInput = $("#outputBaseName");
+        outputNameInput.setCustomValidity("");
+        try {
+            customOutputBase = action === "read-metadata" ? null : window.WebToolsControls.readOutputBaseName(outputNameInput);
+        }
+        catch (error) {
+            var nameErrorMessage = error.message;
+            outputNameInput.setCustomValidity(nameErrorMessage);
+            outputNameInput.reportValidity();
+            outputNameInput.focus();
+            $("#statusLine").textContent = nameErrorMessage;
+            return;
+        }
         running = true;
         cancelled = false;
         activeAction = action;
@@ -1241,6 +1261,7 @@
         onOrderChange: syncSelectedFileOrder
     });
     setupUpload();
+    $("#outputBaseName").addEventListener("input", function () { this.setCustomValidity(""); });
     $$(".tabs button").forEach(function (button) {
         button.addEventListener("click", function () { setTool(button.dataset.tool); });
     });

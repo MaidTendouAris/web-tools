@@ -49,8 +49,13 @@ const server = http.createServer((req, res) => {
     async function state(expected) {
       await page.waitForFunction(value => document.querySelector("#resourceCard")?.dataset.state === value, expected);
     }
+    async function openDetails() {
+      await card.locator("[data-expand]").click();
+      assert.equal(await card.locator("dialog").isVisible(), true);
+    }
     await page.goto(base + "/audio-processing/audio-processing.html");
     await state("missing");
+    await openDetails();
     assert.match(await card.innerText(), /0\/2/);
     assert.equal(await page.locator("#resourceWarning, #loadCoreButton").count(), 0);
     await card.locator("[data-download]").click();
@@ -72,7 +77,7 @@ const server = http.createServer((req, res) => {
     await home.locator('[data-resource-action="clear"][data-resource-id="ffmpeg-core-js"]').click();
     await state("missing");
     await video.waitForFunction(() => document.querySelector("#resourceCard").dataset.state === "missing");
-    assert.equal(await home.locator('.topbar a[href="#resourceManager"]').count(), 1);
+    assert.equal(await home.locator('.topbar a[href="#resourceManager"]').count(), 0);
     console.log("Shared homepage cache + cross-tab updates: PASS");
 
     await page.evaluate(() => {
@@ -109,9 +114,7 @@ const server = http.createServer((req, res) => {
       await WebToolsResources.transaction("readwrite", store => store.put(record));
     });
     await state("missing");
-    await card.locator("summary").click();
-    assert.match(await card.innerText(), /损坏或版本不符/);
-    await card.locator("summary").click();
+    assert.match(await card.locator("dialog").innerText(), /损坏或版本不符/);
     await card.locator("[data-download]").click();
     await state("ready");
     await page.evaluate(async () => {
@@ -126,8 +129,10 @@ const server = http.createServer((req, res) => {
     // No manual library load: download from PDF page, then create a real PDF.
     await page.goto(base + "/image-to-pdf/image-to-pdf.html");
     await state("missing");
+    await openDetails();
     await card.locator("[data-download]").click();
     await state("ready");
+    await card.locator("[data-close]").click();
     assert.equal(await page.evaluate(() => Boolean(window.PDFLib)), false);
     const png = await page.evaluate(() => {
       const canvas = document.createElement("canvas"); canvas.width = 64; canvas.height = 32;
@@ -144,10 +149,13 @@ const server = http.createServer((req, res) => {
     for (const width of [1920,1366,760,390]) {
       await home.setViewportSize({width,height:900});
       assert.ok(await home.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Homepage overflow " + width);
+      if (width === 390) assert.equal(await home.locator(".topbar > *").evaluateAll(items => new Set(items.map(item => item.getBoundingClientRect().top)).size), 1, "Homepage mobile controls wrapped");
     }
-    await home.locator('.topbar a[href="#resourceManager"]').click();
-    assert.ok(await home.locator("#resourceManager").evaluate(el => el.getBoundingClientRect().top < innerHeight), "Resource shortcut did not navigate");
-    console.log("Homepage responsive resource shortcut: PASS");
+    await home.locator('.language [data-lang="en"]').click();
+    await home.setViewportSize({width:390,height:900});
+    assert.equal(await home.locator(".topbar > *").evaluateAll(items => new Set(items.map(item => item.getBoundingClientRect().top)).size), 1, "English homepage mobile controls wrapped");
+    assert.equal(await home.locator("#resourceManager").count(), 1);
+    console.log("Homepage responsive resource section: PASS");
 
     for (const folder of ["audio-processing", "video-processing", "image-to-pdf"]) {
       await page.goto(base + "/" + folder + "/" + folder + ".html");
@@ -156,6 +164,13 @@ const server = http.createServer((req, res) => {
         await page.setViewportSize({width,height:900});
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), folder + " overflow " + width);
       }
+      await page.setViewportSize({width:1920,height:900});
+      const before=await page.evaluate(() => { const card=document.querySelector("#resourceCard"),hero=card.closest(".hero");return {cardHeight:card.getBoundingClientRect().height,titleHeight:hero.firstElementChild.getBoundingClientRect().height,nextTop:hero.nextElementSibling.getBoundingClientRect().top}; });
+      assert.ok(before.cardHeight <= before.titleHeight, folder + " resource card extends above heading");
+      await openDetails();
+      const nextTop=await page.evaluate(() => document.querySelector("#resourceCard").closest(".hero").nextElementSibling.getBoundingClientRect().top);
+      assert.equal(nextTop,before.nextTop,folder + " details moved content");
+      await card.locator("[data-close]").click();
       await page.locator('.language [data-lang="en"]').click();
       assert.match(await card.innerText(), /Local resources/);
       await page.locator("#themeButton").click();
@@ -199,6 +214,7 @@ const server = http.createServer((req, res) => {
 
     await page.goto("file:///" + path.join(root, "image-to-pdf/image-to-pdf.html").replace(/\\/g, "/"));
     await state("missing");
+    await openDetails();
     await card.locator("[data-download]").click();
     await state("ready");
     console.log("file:// direct resource download: PASS");

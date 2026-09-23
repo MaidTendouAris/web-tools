@@ -616,7 +616,9 @@
 
     @media (max-width: 760px) {
       .shell { width: min(100% - 24px, 1120px); padding-top: 16px; }
-      .topbar { justify-content: flex-start; }
+      .topbar { justify-content: flex-start; gap: 6px; }
+      .github-link, .version-badge { padding-inline: 8px; }
+      .language button { padding-inline: 7px; }
       header { display: grid; align-items: start; }
       .status { justify-content: flex-start; }
       .grid { grid-template-columns: 1fr; }
@@ -632,10 +634,9 @@
 <body>
   <main class="shell">
     <div class="topbar">
-      <a class="github-link" href="#resourceManager" data-i18n="resourceTitle">资源管理</a>
       <a class="github-link" href="https://github.com/MaidTendouAris/web-tools" target="_blank" rel="noopener noreferrer">GitHub</a>
       <a class="github-link" href="https://github.com/MaidTendouAris/web-tools/issues" target="_blank" rel="noopener noreferrer" data-i18n="feedback">问题反馈</a>
-      <span class="version-badge">V1.2.4</span>
+      <span class="version-badge">V1.2.5</span>
       <div class="language" aria-label="Language">
         <button type="button" data-lang="zh">中文</button>
         <button type="button" data-lang="en">EN</button>

@@ -31,6 +31,8 @@
             gifTab: "GIF 生成",
             inputTitle: "输入文件",
             settingsTitle: "处理设置",
+            outputNameLabel: "输出文件名（不含后缀，留空自动命名）",
+            outputNamePlaceholder: "留空使用自动名称",
             outputTitle: "输出",
             logTitle: "日志",
             chooseFile: "选择或拖放音视频文件",
@@ -116,6 +118,8 @@
             gifTab: "GIF",
             inputTitle: "Input Files",
             settingsTitle: "Settings",
+            outputNameLabel: "Output file name (no extension; blank for automatic)",
+            outputNamePlaceholder: "Leave blank for automatic name",
             outputTitle: "Output",
             logTitle: "Log",
             chooseFile: "Choose or drop an audio/video file",
@@ -214,6 +218,7 @@
     var running = false;
     var cancelled = false;
     var activeAction = "";
+    var customOutputBase = null;
     var downloadUrl = "";
     var logTimer = 0;
     var workerClient = null;
@@ -292,6 +297,8 @@
         setText("#pageLead", "lead");
         setText("#inputTitle", "inputTitle");
         setText("#settingsTitle", "settingsTitle");
+        setText("#outputNameLabel", "outputNameLabel");
+        $("#outputBaseName").placeholder = t("outputNamePlaceholder");
         setText("#outputTitle", "outputTitle");
         setText("#logTitle", "logTitle");
         setText('[data-tool="metadata"]', "metadataTab");
@@ -398,7 +405,7 @@
         return match ? match[1].toLowerCase() : "bin";
     }
     function fileName(base, ext) {
-        return base.replace(/[^\w.-]+/g, "_").replace(/\.[^.]+$/, "") + "." + ext;
+        return customOutputBase ? customOutputBase + "." + ext.split(".").pop() : base.replace(/[^\w.-]+/g, "_").replace(/\.[^.]+$/, "") + "." + ext;
     }
     function videoEncodeArgs(format) {
         if (format === "webm")
@@ -860,7 +867,7 @@
             throw new Error(t("needSingle"));
         var core = await getCore();
         await core.reset();
-        var inputName = "input." + getExt(singleFile.name);
+        var inputName = "__wt_input_" + Math.random().toString(36).slice(2) + "." + getExt(singleFile.name);
         await writeFileToCore(core, inputName, singleFile);
         return { core: core, inputName: inputName, file: singleFile };
     }
@@ -936,20 +943,23 @@
         var core = await getCore();
         await core.reset();
         var listText = "";
+        var inputNames = [];
+        var inputPrefix = "__wt_concat_" + Math.random().toString(36).slice(2) + "_";
         for (var i = 0; i < multiFiles.length; i++) {
             progressUI.file(multiFiles[i].name, i + 1);
-            var inputName = "concat_" + i + "." + getExt(multiFiles[i].name);
+            var inputName = inputPrefix + i + "." + getExt(multiFiles[i].name);
+            inputNames.push(inputName);
             await writeFileToCore(core, inputName, multiFiles[i]);
             listText += "file '" + inputName + "'\n";
         }
         await safeUnlink(core, "concat.txt");
         await core.FS.writeFile("concat.txt", listText);
-        var outputName = "stitched-output.mp4";
+        var outputName = customOutputBase ? customOutputBase + ".mp4" : "stitched-output.mp4";
         await runFFmpeg(["-f", "concat", "-safe", "0", "-i", "concat.txt", "-c", "copy", outputName]);
         showDownload(await readOutputBlob(core, outputName, "mp4"), outputName);
         showSummary([{ label: t("streams"), value: String(multiFiles.length) }, { label: t("size"), value: formatBytes((await core.FS.stat(outputName)).size) }]);
-        for (var index = 0; index < multiFiles.length; index++)
-            await safeUnlink(core, "concat_" + index + "." + getExt(multiFiles[index].name));
+        for (var index = 0; index < inputNames.length; index++)
+            await safeUnlink(core, inputNames[index]);
         await safeUnlink(core, "concat.txt");
         await safeUnlink(core, outputName);
     }
@@ -1003,6 +1013,19 @@
     async function runAction(action) {
         if (running)
             return;
+        var outputNameInput = $("#outputBaseName");
+        outputNameInput.setCustomValidity("");
+        try {
+            customOutputBase = action === "metadata" ? null : window.WebToolsControls.readOutputBaseName(outputNameInput);
+        }
+        catch (error) {
+            var message = (error && error.message) || String(error);
+            outputNameInput.setCustomValidity(message);
+            outputNameInput.reportValidity();
+            outputNameInput.focus();
+            $("#statusLine").textContent = message;
+            return;
+        }
         running = true;
         cancelled = false;
         activeAction = action;
@@ -1164,6 +1187,7 @@
     $$(".run-btn").forEach(function (button) {
         button.addEventListener("click", function () { runAction(button.dataset.action); });
     });
+    $("#outputBaseName").addEventListener("input", function () { this.setCustomValidity(""); });
     $("#usePreviewStart").addEventListener("click", syncClipStartFromPreview);
     $("#usePreviewEnd").addEventListener("click", syncClipEndFromPreview);
     $("#previewClipRange").addEventListener("click", previewClipRange);

@@ -149,10 +149,15 @@
     const resources = ids.map(id => definitions.find(item => item.id === id));
     if (resources.some(item => !item)) throw new Error("Unknown resource group");
     host.classList.add("wt-resource-card");
-    host.innerHTML = '<div class="wt-resource-head"><strong></strong><span class="wt-resource-badge" role="status" aria-live="polite"></span></div><p class="wt-resource-summary"></p><div class="wt-resource-actions"><button type="button" class="btn primary" data-download></button><button type="button" class="btn" data-import></button><button type="button" class="btn" data-check></button></div><progress max="100" hidden></progress><p class="wt-resource-message" role="status" aria-live="polite" hidden></p><details><summary></summary><ul></ul></details><input type="file" accept=".js,.wasm" multiple hidden>';
+    host.innerHTML = '<div class="wt-resource-head"><strong></strong><span class="wt-resource-badge" role="status" aria-live="polite"></span></div><p class="wt-resource-summary"></p><button type="button" class="btn wt-resource-expand" data-expand aria-haspopup="dialog">⤢</button><dialog class="wt-resource-dialog" aria-modal="true"><div class="wt-resource-dialog-head"><h2></h2><button type="button" class="btn" data-close></button></div><p class="wt-resource-detail-summary"></p><div class="wt-resource-actions"><button type="button" class="btn primary" data-download></button><button type="button" class="btn" data-import></button><button type="button" class="btn" data-check></button></div><progress max="100" hidden></progress><p class="wt-resource-message" role="status" aria-live="polite" hidden></p><ul></ul><input type="file" accept=".js,.wasm" multiple hidden></dialog>';
     const title = host.querySelector("strong")!;
     const badge = host.querySelector(".wt-resource-badge") as HTMLElement;
     const summary = host.querySelector(".wt-resource-summary")!;
+    const detailSummary = host.querySelector(".wt-resource-detail-summary")!;
+    const dialog = host.querySelector(".wt-resource-dialog") as HTMLDialogElement;
+    const dialogTitle = dialog.querySelector("h2")!;
+    const expandButton = host.querySelector("[data-expand]") as HTMLButtonElement;
+    const closeButton = host.querySelector("[data-close]") as HTMLButtonElement;
     const downloadButton = host.querySelector("[data-download]") as HTMLButtonElement;
     const importButton = host.querySelector("[data-import]") as HTMLButtonElement;
     const checkButton = host.querySelector("[data-check]") as HTMLButtonElement;
@@ -165,17 +170,23 @@
     let state = "checking", busy = false, errorKey = "", file = "", received = 0;
     let percent: number | null = null, refreshPromise: Promise<void> | null = null;
     const words = {
-      zh: { repair: "修复资源", damaged: "损坏或版本不符", title: "本地资源", checking: "检查中", ready: "已就绪", missing: "缺少资源", downloading: "下载中", importing: "导入中", error: "检查失败", cached: "已缓存", absent: "未缓存", hint: "处理时自动加载", download: "下载缺失资源", retry: "重试下载", import: "导入文件", check: "重新检查", details: "资源详情", downloadError: "下载或缓存写入失败，请检查网络及浏览器存储空间后重试，也可导入本地文件。", checkError: "无法访问浏览器缓存，请检查浏览器存储权限后重新检查。", importError: "导入失败。文件须与支持版本完全一致，请下载详情对应的原始文件，并检查存储空间。" },
-      en: { repair: "Repair resources", damaged: "Damaged or wrong version", title: "Local resources", checking: "Checking", ready: "Ready", missing: "Missing", downloading: "Downloading", importing: "Importing", error: "Check failed", cached: "cached", absent: "Missing", hint: "Loads automatically when needed", download: "Download missing resources", retry: "Retry download", import: "Import files", check: "Check again", details: "Resource details", downloadError: "Download or cache write failed. Check your connection and browser storage, then retry or import local files.", checkError: "Cannot access browser cache. Check storage permissions and try again.", importError: "Import failed. Files must exactly match the supported versions. Download the original files and check available storage." }
+      zh: { repair: "修复资源", damaged: "损坏或版本不符", title: "本地资源", checking: "检查中", ready: "已就绪", missing: "缺少资源", downloading: "下载中", importing: "导入中", error: "检查失败", cached: "已缓存", absent: "未缓存", hint: "处理时自动加载", download: "下载缺失资源", retry: "重试下载", import: "导入文件", check: "重新检查", details: "资源详情", close: "关闭", downloadError: "下载或缓存写入失败，请检查网络及浏览器存储空间后重试，也可导入本地文件。", checkError: "无法访问浏览器缓存，请检查浏览器存储权限后重新检查。", importError: "导入失败。文件须与支持版本完全一致，请下载详情对应的原始文件，并检查存储空间。" },
+      en: { repair: "Repair resources", damaged: "Damaged or wrong version", title: "Local resources", checking: "Checking", ready: "Ready", missing: "Missing", downloading: "Downloading", importing: "Importing", error: "Check failed", cached: "cached", absent: "Missing", hint: "Loads automatically when needed", download: "Download missing resources", retry: "Retry download", import: "Import files", check: "Check again", details: "Resource details", close: "Close", downloadError: "Download or cache write failed. Check your connection and browser storage, then retry or import local files.", checkError: "Cannot access browser cache. Check storage permissions and try again.", importError: "Import failed. Files must exactly match the supported versions. Download the original files and check available storage." }
     };
     function render() {
       const w = words[document.documentElement.lang.startsWith("zh") ? "zh" : "en"];
       const count = resources.filter(item => states.get(item.id)).length;
       const group = ids.includes("pdf-lib-js") ? "pdf-lib" : "FFmpeg";
       title.textContent = w.title;
+      dialogTitle.textContent = w.details;
+      dialog.setAttribute("aria-label", w.details);
+      expandButton.setAttribute("aria-label", w.details);
+      expandButton.title = w.details;
+      closeButton.textContent = w.close;
       badge.textContent = w[state];
       host.dataset.state = state;
-      summary.textContent = group + " · " + count + "/" + resources.length + " " + w.cached + (state === "ready" ? " · " + w.hint : "");
+      summary.textContent = group + " · " + count + "/" + resources.length + " " + w.cached;
+      detailSummary.textContent = summary.textContent + (state === "ready" ? " · " + w.hint : "");
       downloadButton.textContent = damaged.size ? w.repair : errorKey === "downloadError" ? w.retry : w.download;
       downloadButton.hidden = state === "ready";
       downloadButton.disabled = busy || state === "checking" || state === "error";
@@ -189,7 +200,6 @@
       if (percent === null) bar.removeAttribute("value"); else bar.value = percent;
       message.hidden = !errorKey && !busy;
       message.textContent = errorKey ? w[errorKey] : file + (percent === null ? " · " + (received / 1048576).toFixed(1) + " MB" : " · " + percent + "%");
-      host.querySelector("summary")!.textContent = w.details;
       list.replaceChildren();
       resources.forEach(item => {
         const row = document.createElement("li");
@@ -249,6 +259,9 @@
       finally { input.value = ""; busy = false; await refresh(); }
     };
     checkButton.onclick = () => { errorKey = ""; void refresh(); };
+    expandButton.onclick = () => dialog.showModal();
+    closeButton.onclick = () => dialog.close();
+    dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
     new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
     global.addEventListener("web-tools-resources-changed", () => void refresh());
     global.addEventListener("focus", () => void refresh());

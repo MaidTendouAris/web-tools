@@ -1373,11 +1373,11 @@ input[type="color"].wt-color::-moz-color-swatch {
 
 /* Cache availability is separate from loading a runtime for a task. */
 .wt-tool-page .wt-resource-card {
-  width: 340px; max-width: 100%; min-width: 0; padding: 16px;
+  position: relative; width: 340px; max-width: 100%; min-width: 0; height: 84px; padding: 12px 44px 12px 14px;
   border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
   box-shadow: var(--shadow); font-size: 13px;
 }
-.wt-resource-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.wt-resource-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; white-space: nowrap; }
 .wt-resource-head strong { font-size: 14px; }
 .wt-resource-badge { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
 .wt-resource-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
@@ -1385,7 +1385,14 @@ input[type="color"].wt-color::-moz-color-swatch {
 .wt-resource-card[data-state="missing"] .wt-resource-badge { color: var(--amber); }
 .wt-resource-card[data-state="error"] .wt-resource-badge { color: var(--danger); }
 .wt-resource-card[data-state="downloading"] .wt-resource-badge { color: var(--blue); }
-.wt-resource-summary { color: var(--muted); line-height: 1.6; margin: 9px 0 12px; }
+.wt-resource-summary { color: var(--muted); line-height: 1.4; margin: 7px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wt-tool-page .wt-resource-expand { position: absolute; right: 10px; bottom: 10px; width: 30px; min-height: 30px; padding: 0; font-size: 20px; line-height: 1; }
+.wt-tool-page .wt-resource-dialog { width: min(460px, calc(100vw - 28px)); max-height: min(80vh, 680px); padding: 20px; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+.wt-resource-dialog::backdrop { background: rgba(10, 19, 35, .5); }
+.wt-resource-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wt-resource-dialog-head h2 { margin: 0; font-size: 20px; }
+.wt-resource-dialog .wt-resource-detail-summary { color: var(--muted); line-height: 1.5; margin: 10px 0 16px; }
+.wt-resource-dialog .wt-resource-actions { margin-bottom: 12px; }
 .wt-resource-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .wt-resource-card .btn { font-size: 12px; padding: 7px 10px; }
 .wt-resource-card progress { display: block; width: 100%; height: 7px; margin-top: 12px; accent-color: var(--blue); }
@@ -1393,8 +1400,6 @@ input[type="color"].wt-color::-moz-color-swatch {
 .wt-resource-message { font-size: 12px; line-height: 1.6; color: var(--danger); overflow-wrap: anywhere; margin: 10px 0 0; }
 .wt-resource-card[data-state="downloading"] .wt-resource-message,
 .wt-resource-card[data-state="importing"] .wt-resource-message { color: var(--muted); }
-.wt-resource-card details { margin-top: 12px; color: var(--muted); }
-.wt-resource-card summary { cursor: pointer; font-size: 12px; }
 .wt-resource-card ul { list-style: none; padding: 0; margin: 10px 0 0; }
 .wt-resource-card li { display: flex; justify-content: space-between; gap: 10px; line-height: 1.8; overflow-wrap: anywhere; }
 .wt-resource-card li span:first-child { min-width: 0; }
@@ -1406,4 +1411,6 @@ input[type="color"].wt-color::-moz-color-swatch {
 .wt-number-button:hover::after,
 .wt-number-button:focus-visible::after { transform: translateY(0); }
 
-.wt-output-clear { display: block; margin-top: 12px; }
+.wt-tool-page .wt-output-name-field { display: grid; gap: 6px; margin-bottom: 16px; color: var(--muted); font-size: 13px; font-weight: 700; }
+.wt-tool-page .wt-output-name-field input:invalid { border-color: var(--danger); }
+.wt-output-clear { display: inline-flex; margin-left: 8px; margin-top: 0; vertical-align: middle; }

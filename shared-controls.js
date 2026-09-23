@@ -862,6 +862,18 @@
             return zh ? "无法读取此媒体格式，请检查文件是否完整，或尝试其他输出格式。详情：" + raw : "Cannot read this media format. Check that the file is complete or try another output format. Details: " + raw;
         return (zh ? "处理失败，可调整设置后重试。详情：" : "Processing failed. Adjust the settings and retry. Details: ") + raw;
     }
+    function readOutputBaseName(input) {
+        const raw = input.value;
+        if (raw === "")
+            return null;
+        const invalid = raw !== raw.trim() || raw.length > 120 || /[.\\/:*?"<>|%\u0000-\u001f\u007f-\u009f]/u.test(raw) || raw.startsWith("-") || /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(raw);
+        if (invalid || !raw.trim()) {
+            throw new Error(document.documentElement.lang.startsWith("zh")
+                ? "文件名无效：请只填写不含后缀的名称，且不要使用路径、保留字符或首尾空格（最多 120 字符）。"
+                : "Invalid file name: enter a name without an extension, path, reserved characters, or surrounding spaces (up to 120 characters).");
+        }
+        return raw;
+    }
     function renderOutputClear() {
         document.querySelectorAll(".wt-output-clear").forEach(button => {
             button.textContent = document.documentElement.lang.startsWith("zh") ? "移除输出" : "Remove output";
@@ -879,6 +891,7 @@
     global.WebToolsControls = {
         describeError: describeError,
         addOutputClear: addOutputClear,
+        readOutputBaseName: readOutputBaseName,
         createProgress: createProgress,
         enhance: enhance,
         refresh: refreshAll,

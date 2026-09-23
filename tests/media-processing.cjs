@@ -83,7 +83,13 @@ const server = http.createServer((req,res)=>{
   }
  }
  await page.locator('#fileInput').setInputFiles(artifact('test.wav'));
+ await page.locator('#outputBaseName').fill('input');
  await run('convert');
+ if (await page.locator('#resultBox a').getAttribute('download') !== 'input.mp3') throw Error('Audio custom name or temporary input collision');
+ await page.locator('#outputBaseName').fill('bad.mp3');
+ await page.locator('[data-action="convert"]').click();
+ if (await page.locator('#outputBaseName').evaluate(el=>el.validity.valid) || !/文件名无效/.test(await page.locator('#statusLine').innerText())) throw Error('Invalid audio name was not rejected before processing');
+ await page.locator('#outputBaseName').fill('');
  await page.locator('[data-tool="speed"]').click();
  await page.locator('#speedInput').fill('2');
  await run('speed');
@@ -97,7 +103,13 @@ const server = http.createServer((req,res)=>{
  await run('volume');
  await page.locator('[data-tool="convert"]').click();
  await page.locator('#fileInput').setInputFiles([artifact('test.wav'),artifact('test.wav')]);
+ await page.locator('#outputBaseName').fill('batch');
  await run('convert');
+ if (await page.locator('#resultBox a').getAttribute('download') !== 'batch.zip') throw Error('Batch archive custom name');
+ const batchBytes=await page.locator('#resultBox a').evaluate(async a=>Array.from(new Uint8Array(await(await fetch(a.href)).arrayBuffer())));
+ const batchZip=await JSZip.loadAsync(Buffer.from(batchBytes));
+ if (Object.keys(batchZip.files).sort().join(',') !== 'batch-2.mp3,batch.mp3') throw Error('Batch file names were not unique');
+ await page.locator('#outputBaseName').fill('');
  await page.locator('[data-tool="remux"]').click();
  await run('remux');
  await page.locator('[data-tool="speed"]').click();
@@ -113,7 +125,13 @@ const server = http.createServer((req,res)=>{
  await page.locator('#singleFileInput').setInputFiles(artifact('test.mp4'));
  await run('metadata');
  await page.locator('[data-tool="remux"]').click();
+ await page.locator('#outputBaseName').fill('input');
  await run('remux');
+ if (await page.locator('#resultBox a').getAttribute('download') !== 'input.mp4') throw Error('Video custom name or temporary input collision');
+ await page.locator('#outputBaseName').fill('bad/name');
+ await page.locator('[data-action="remux"]').click();
+ if (await page.locator('#outputBaseName').evaluate(el=>el.validity.valid) || !/文件名无效/.test(await page.locator('#statusLine').innerText())) throw Error('Invalid video name was not rejected before processing');
+ await page.locator('#outputBaseName').fill('');
  await page.locator('[data-tool="speed"]').click();
  await page.locator('#speedInput').fill('0.5');
  await page.evaluate(()=>{
