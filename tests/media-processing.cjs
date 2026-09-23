@@ -88,7 +88,7 @@ const server = http.createServer((req,res)=>{
  if (await page.locator('#resultBox a').getAttribute('download') !== 'input.mp3') throw Error('Audio custom name or temporary input collision');
  await page.locator('#outputBaseName').fill('bad.mp3');
  await page.locator('[data-action="convert"]').click();
- if (await page.locator('#outputBaseName').evaluate(el=>el.validity.valid) || !/文件名无效/.test(await page.locator('#statusLine').innerText())) throw Error('Invalid audio name was not rejected before processing');
+ if (await page.locator('#outputBaseName').evaluate(el=>el.validity.valid) || !/(文件名无效|Invalid file name)/.test(await page.locator('#statusLine').innerText())) throw Error('Invalid audio name was not rejected before processing');
  await page.locator('#outputBaseName').fill('');
  await page.locator('[data-tool="speed"]').click();
  await page.locator('#speedInput').fill('2');
@@ -130,7 +130,7 @@ const server = http.createServer((req,res)=>{
  if (await page.locator('#resultBox a').getAttribute('download') !== 'input.mp4') throw Error('Video custom name or temporary input collision');
  await page.locator('#outputBaseName').fill('bad/name');
  await page.locator('[data-action="remux"]').click();
- if (await page.locator('#outputBaseName').evaluate(el=>el.validity.valid) || !/文件名无效/.test(await page.locator('#statusLine').innerText())) throw Error('Invalid video name was not rejected before processing');
+ if (await page.locator('#outputBaseName').evaluate(el=>el.validity.valid) || !/(文件名无效|Invalid file name)/.test(await page.locator('#statusLine').innerText())) throw Error('Invalid video name was not rejected before processing');
  await page.locator('#outputBaseName').fill('');
  await page.locator('[data-tool="speed"]').click();
  await page.locator('#speedInput').fill('0.5');
