@@ -97,7 +97,17 @@
             invalidStartAfterEnd: "开始时间必须早于结束时间。",
             invalidEndBeforeStart: "结束时间必须晚于开始时间。",
             invalidTimeRange: "时间范围超出音频时长，请重新选择。",
-            subtitleHelp: "导入 VTT/LRC 或新建字幕行。播放音频时选中一行，点击打轴按钮记录当前时间；也可按 [ 标记开始、] 标记结束。",
+            subtitleEntryHelp: "在独立编辑视图中随音频播放打轴、编写字幕，并导出 LRC/VTT 或带字幕音频。",
+            subtitleOpen: "进入字幕编辑器",
+            subtitleBack: "← 返回音频处理",
+            subtitleEditorTitle: "字幕编辑器",
+            subtitlePlayerTitle: "音频与打轴",
+            subtitleCueTitle: "字幕行",
+            subtitleExportTitle: "导出设置",
+            subtitleNoAudio: "请先在工作区选择音频文件，然后进入编辑器打轴。无需音频也可手动编辑并单独导出字幕。",
+            subtitleNoSource: "尚未选择音频",
+            subtitleDraftStatus: "当前编辑：{number} 行字幕",
+            subtitleHelp: "导入 VTT/LRC 或新建字幕行。播放音频时点击打轴开始会新增一行，再点击打轴结束；也可按 [ 和 ]。时间精确到 0.001 秒。",
             subtitleImport: "导入字幕",
             subtitleImportButton: "导入 VTT/LRC",
             subtitleNoImport: "未导入字幕",
@@ -216,7 +226,17 @@
             invalidStartAfterEnd: "Start time must be earlier than end time.",
             invalidEndBeforeStart: "End time must be later than start time.",
             invalidTimeRange: "The time range is outside the audio duration. Choose another range.",
-            subtitleHelp: "Import VTT/LRC or add a cue. Select a cue while audio plays and mark the current time with the buttons, or press [ for start and ] for end.",
+            subtitleEntryHelp: "Open the dedicated editor to time cues during playback, write subtitles, and export LRC/VTT or audio with subtitles.",
+            subtitleOpen: "Open Subtitle Editor",
+            subtitleBack: "← Back to Audio Processing",
+            subtitleEditorTitle: "Subtitle Editor",
+            subtitlePlayerTitle: "Audio & Timing",
+            subtitleCueTitle: "Cues",
+            subtitleExportTitle: "Export Settings",
+            subtitleNoAudio: "Choose audio in the workspace before timing cues. You can still edit and export a subtitle file without audio.",
+            subtitleNoSource: "No audio selected",
+            subtitleDraftStatus: "Current edit: {number} cues",
+            subtitleHelp: "Import VTT/LRC or add cues. While audio plays, Mark start creates a new cue and Mark end closes it; [ and ] also work. Times use 0.001-second precision.",
             subtitleImport: "Import subtitles",
             subtitleImportButton: "Import VTT/LRC",
             subtitleNoImport: "No subtitles imported",
@@ -271,6 +291,10 @@
     var subtitleCueId = 0;
     var selectedSubtitleId = null;
     var subtitleImportedName = "";
+    var subtitleEditorOpen = false;
+    var subtitlePlayerHome = $("#playerBox").parentElement;
+    var subtitleNameHome = $("#outputNameField").parentElement;
+    var subtitleStatusHome = $("#statusGroup").parentElement;
     var previewUrl = "";
     var previewStopTimer = null;
     var lastValidStart = 0;
@@ -295,7 +319,7 @@
             throw new DOMException("Cancelled", "AbortError");
     }
     function lockInputs(locked) {
-        $$(".workspace-card-input, .tool-panel, .tabs, .engine-card").forEach(function (element) { element.inert = locked; });
+        $$(".workspace-card-input, .tool-panel, .tabs, .engine-card, .subtitle-edit-controls, #playerBox").forEach(function (element) { element.inert = locked; });
     }
     window.addEventListener("pagehide", function () {
         if (workerClient)
@@ -341,6 +365,7 @@
     function applyTheme(theme) {
         document.documentElement.dataset.theme = theme;
         $("#themeButton").setAttribute("aria-label", t("themeToggle"));
+        $("#subtitleThemeButton").setAttribute("aria-label", t("themeToggle"));
     }
     function setText(selector, key) {
         var element = $(selector);
@@ -403,6 +428,14 @@
         setText("#keepPitchLabel", "keepPitch");
         setText("#speedArgsLabel", "speedArgs");
         setText("#applyPreviewSpeed", "previewSpeed");
+        setText("#subtitleEntryHelp", "subtitleEntryHelp");
+        setText("#openSubtitleEditor", "subtitleOpen");
+        setText("#closeSubtitleEditor", "subtitleBack");
+        setText("#subtitleEditorTitle", "subtitleEditorTitle");
+        setText("#subtitlePlayerTitle", "subtitlePlayerTitle");
+        setText("#subtitleCueTitle", "subtitleCueTitle");
+        setText("#subtitleExportTitle", "subtitleExportTitle");
+        setText("#subtitleNoAudio", "subtitleNoAudio");
         setText("#subtitleHelp", "subtitleHelp");
         $("#subtitleImport").setAttribute("aria-label", t("subtitleImport"));
         setText("#subtitleImportButton", "subtitleImportButton");
@@ -425,11 +458,13 @@
         setButtonText('[data-action="write-metadata"]', "writeMetadata");
         setButtonText('[data-action="volume"]', "volume");
         setButtonText('[data-action="speed"]', "speed");
-        $$(".language button[data-lang]").forEach(function (button) {
+        $$(".language button[data-lang], .subtitle-language button[data-lang]").forEach(function (button) {
             button.classList.toggle("active", button.dataset.lang === language);
         });
         renderFile();
         renderSubtitleCues();
+        updateSubtitleDraftStatus();
+        updateSubtitleSource();
         if (!$("#resultBox").dataset.hasOutput)
             $("#resultBox").textContent = t("noOutput");
         if (!singleFile)
@@ -773,8 +808,7 @@
         var fraction = millis % 1000;
         var pad = function (n, size = 2) { return String(n).padStart(size, "0"); };
         if (lrc) {
-            var centis = Math.round(millis / 10);
-            return pad(Math.floor(centis / 6000)) + ":" + pad(Math.floor(centis / 100) % 60) + "." + pad(centis % 100);
+            return pad(Math.floor(millis / 60000)) + ":" + pad(seconds) + "." + pad(fraction, 3);
         }
         return pad(hours) + ":" + pad(minutes) + ":" + pad(seconds) + "." + pad(fraction, 3);
     }
@@ -841,9 +875,48 @@
         var duration = Number($("#audioPlayer").duration);
         return Number.isFinite(duration) && duration > 0 ? duration : Infinity;
     }
+    function roundSubtitleTime(value) {
+        return Math.round(value * 1000) / 1000;
+    }
     function subtitleFeedback(message) {
         $("#subtitleFeedback").textContent = message;
         $("#statusLine").textContent = message;
+    }
+    function updateSubtitleDraftStatus() {
+        $("#subtitleDraftStatus").textContent = t("subtitleDraftStatus").replace("{number}", String(subtitleCues.length));
+    }
+    function updateSubtitleSource() {
+        $("#subtitleSourceName").textContent = singleFile ? singleFile.name : t("subtitleNoSource");
+        $("#subtitleNoAudio").hidden = !!singleFile;
+    }
+    function openSubtitleEditor() {
+        if (running || subtitleEditorOpen)
+            return;
+        $("#subtitlePlayerMount").appendChild($("#playerBox"));
+        $("#subtitleOutputNameMount").appendChild($("#outputNameField"));
+        $("#subtitleStatusMount").appendChild($("#statusGroup"));
+        $("#mainWorkspace").hidden = true;
+        $("#subtitleEditorView").hidden = false;
+        subtitleEditorOpen = true;
+        updateSubtitleSource();
+        updateSubtitlePlayback();
+        window.scrollTo(0, 0);
+        $("#closeSubtitleEditor").focus();
+    }
+    function closeSubtitleEditor(showOutput = false) {
+        if (running || !subtitleEditorOpen)
+            return;
+        subtitlePlayerHome.insertBefore($("#playerBox"), $("#fileBox"));
+        subtitleNameHome.insertBefore($("#outputNameField"), $("#panel-convert"));
+        subtitleStatusHome.appendChild($("#statusGroup"));
+        $("#subtitleEditorView").hidden = true;
+        $("#mainWorkspace").hidden = false;
+        subtitleEditorOpen = false;
+        updateSubtitleDraftStatus();
+        if (showOutput)
+            $("#resultBox").scrollIntoView({ block: "center" });
+        else
+            $("#openSubtitleEditor").focus();
     }
     function updateSubtitleExportMode() {
         var embedded = $("#subtitleExportMode").value === "embedded";
@@ -864,6 +937,7 @@
     function renderSubtitleCues() {
         var list = $("#subtitleList");
         list.replaceChildren();
+        updateSubtitleDraftStatus();
         if (!subtitleCues.length) {
             var empty = document.createElement("p");
             empty.className = "subtitle-help";
@@ -905,9 +979,15 @@
                 input.type = "number";
                 input.min = "0";
                 input.step = "0.001";
-                input.value = String(cue[kind]);
+                input.value = Number.isFinite(cue[kind]) ? cue[kind].toFixed(3) : "";
                 input.dataset.time = kind;
                 input.addEventListener("input", function () { cue[kind] = input.value === "" ? NaN : Number(input.value); updateSubtitlePlayback(); });
+                input.addEventListener("change", function () {
+                    if (Number.isFinite(cue[kind])) {
+                        cue[kind] = roundSubtitleTime(cue[kind]);
+                        input.value = cue[kind].toFixed(3);
+                    }
+                });
                 label.append(span, input);
                 times.appendChild(label);
             });
@@ -928,8 +1008,8 @@
         var audio = $("#audioPlayer");
         var duration = getSubtitleDuration();
         var current = audio.src && Number.isFinite(audio.currentTime) ? Number(audio.currentTime) : 0;
-        var start = Math.min(current, Math.max(0, duration - 0.1));
-        var cue = { id: ++subtitleCueId, start: start, end: Math.min(duration, start + 3), text: "" };
+        var start = roundSubtitleTime(Math.min(current, Math.max(0, duration - 0.1)));
+        var cue = { id: ++subtitleCueId, start: start, end: roundSubtitleTime(Math.min(duration, start + 3)), text: "" };
         subtitleCues.push(cue);
         selectedSubtitleId = cue.id;
         renderSubtitleCues();
@@ -944,26 +1024,22 @@
             subtitleFeedback(t("subtitleMarkNeedAudio"));
             return;
         }
+        if (kind === "start") {
+            addSubtitleCue(false);
+            subtitleFeedback("");
+            return;
+        }
         var cue = selectedSubtitleCue();
         if (!cue) {
-            addSubtitleCue(false);
-            cue = selectedSubtitleCue();
-        }
-        if (!cue)
+            subtitleFeedback(t("subtitleNeedCue"));
             return;
-        var current = Math.min(duration, Number(audio.currentTime));
-        if (kind === "start") {
-            cue.start = Math.min(current, Math.max(0, duration - 0.1));
-            if (cue.end <= cue.start)
-                cue.end = Math.min(duration, cue.start + 3);
         }
-        else {
-            if (current <= cue.start) {
-                subtitleFeedback(t("subtitleMarkNeedStart"));
-                return;
-            }
-            cue.end = current;
+        var current = roundSubtitleTime(Math.min(duration, Number(audio.currentTime)));
+        if (current <= cue.start) {
+            subtitleFeedback(t("subtitleMarkNeedStart"));
+            return;
         }
+        cue.end = current;
         subtitleFeedback("");
         renderSubtitleCues();
     }
@@ -978,7 +1054,7 @@
             if (!Number.isFinite(cue.start) || !Number.isFinite(cue.end) || cue.start < 0 || Math.round(cue.end * 1000) <= Math.round(cue.start * 1000) || cue.end > duration + 0.001) {
                 throw new Error(t("subtitleInvalidTime").replace("{number}", number));
             }
-            return { start: cue.start, end: cue.end, text: cue.text.trim() };
+            return { start: roundSubtitleTime(cue.start), end: roundSubtitleTime(cue.end), text: cue.text.trim() };
         }).sort(function (a, b) { return a.start - b.start; });
     }
     function subtitleVtt(cues) {
@@ -1128,6 +1204,7 @@
         if (running)
             return;
         singleFile = file;
+        updateSubtitleSource();
         if (previewUrl)
             URL.revokeObjectURL(previewUrl);
         previewUrl = "";
@@ -1500,6 +1577,7 @@
     async function runAction(action) {
         if (running)
             return;
+        var subtitleSucceeded = false;
         var outputNameInput = $("#outputBaseName");
         outputNameInput.setCustomValidity("");
         try {
@@ -1544,6 +1622,7 @@
             checkCancelled();
             setStatus("done");
             progressUI.finish("done");
+            subtitleSucceeded = action === "subtitle";
         }
         catch (error) {
             progressUI.finish(cancelled ? "cancelled" : "failed");
@@ -1559,7 +1638,10 @@
             setStatus("failed");
             var message = (error && error.message) || String(error);
             appendLog(message);
-            $("#resultBox").textContent = window.WebToolsControls.describeError(error);
+            var describedError = window.WebToolsControls.describeError(error);
+            $("#resultBox").textContent = describedError;
+            if (action === "subtitle")
+                subtitleFeedback(describedError);
         }
         finally {
             if (workerClient)
@@ -1571,6 +1653,8 @@
             lockInputs(false);
             running = false;
             $$(".run-btn").forEach(function (button) { button.disabled = false; });
+            if (subtitleSucceeded)
+                closeSubtitleEditor(true);
         }
     }
     function setTool(tool) {
@@ -1612,7 +1696,7 @@
     $$(".tabs button").forEach(function (button) {
         button.addEventListener("click", function () { setTool(button.dataset.tool); });
     });
-    document.querySelectorAll(".language button[data-lang]").forEach(function (button) {
+    document.querySelectorAll(".language button[data-lang], .subtitle-language button[data-lang]").forEach(function (button) {
         button.addEventListener("click", function () {
             var nextLanguage = button.dataset.lang;
             if (nextLanguage !== "zh" && nextLanguage !== "en")
@@ -1621,13 +1705,15 @@
             applyLanguage(nextLanguage);
         });
     });
-    $("#themeButton").addEventListener("click", function () {
+    function toggleTheme() {
         var nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
         preferences.setItem(THEME_STORAGE_KEY, nextTheme);
         applyTheme(nextTheme);
         if (singleFile)
             void drawWaveform(singleFile);
-    });
+    }
+    $("#themeButton").addEventListener("click", toggleTheme);
+    $("#subtitleThemeButton").addEventListener("click", toggleTheme);
     $("#audioPlayer").addEventListener("loadedmetadata", function () {
         setCutBounds(0, Math.min(10, getMediaDuration()));
         updateSubtitlePlayback();
@@ -1648,6 +1734,8 @@
     $("#speedFormat").addEventListener("change", syncSpeedDefaultArgs);
     $("#speedInput").addEventListener("change", readSpeedFactor);
     $("#applyPreviewSpeed").addEventListener("click", applyPreviewSpeed);
+    $("#openSubtitleEditor").addEventListener("click", openSubtitleEditor);
+    $("#closeSubtitleEditor").addEventListener("click", function () { closeSubtitleEditor(); });
     $("#subtitleAdd").addEventListener("click", function () { addSubtitleCue(); });
     $("#subtitleImportButton").addEventListener("click", function () { $("#subtitleImport").click(); });
     $("#subtitleMarkStart").addEventListener("click", function () { markSubtitleTime("start"); });
@@ -1676,7 +1764,7 @@
         }
     });
     document.addEventListener("keydown", function (event) {
-        if (currentTool !== "subtitle" || running || event.altKey || event.ctrlKey || event.metaKey)
+        if (!subtitleEditorOpen || running || event.altKey || event.ctrlKey || event.metaKey)
             return;
         var target = event.target;
         if (target?.closest("input, textarea, select, [contenteditable='true']"))

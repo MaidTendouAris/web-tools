@@ -50,7 +50,7 @@
     .subtitle-import-name { min-width: 0; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 13px; }
     .subtitle-clock { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--blue); }
     .subtitle-help { margin: 8px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.5; }
-    .subtitle-list { display: grid; gap: 10px; max-height: 460px; overflow: auto; }
+    .subtitle-list { display: grid; gap: 10px; }
     .subtitle-row { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
     .subtitle-row.selected { border-color: var(--blue); box-shadow: 0 0 0 2px var(--ring); }
     .subtitle-row.playing { background: color-mix(in srgb, var(--blue) 10%, var(--panel)); }
@@ -58,17 +58,41 @@
     .subtitle-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .subtitle-row textarea { min-height: 64px; }
     .subtitle-row label { min-width: 0; }
+    .subtitle-editor-view[hidden], #mainWorkspace[hidden] { display: none !important; }
+    .subtitle-editor-view { width: min(1680px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 48px; }
+    .subtitle-editor-header { display: flex; align-items: flex-start; gap: 20px; margin-bottom: 22px; }
+    .subtitle-editor-heading { flex: 1 1 auto; min-width: 0; }
+    .subtitle-editor-top-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+    .subtitle-language { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    .subtitle-language button { min-width: 36px; min-height: 30px; padding: 5px 9px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; font-weight: 800; }
+    .subtitle-language button.active { background: var(--soft); color: var(--blue); box-shadow: 0 1px 5px rgba(24, 32, 43, .08); }
+    .subtitle-language button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .subtitle-editor-heading h1 { margin: 6px 0 0; }
+    .subtitle-editor-heading .subtitle-help { margin-bottom: 0; }
+    .subtitle-editor-grid { display: grid; grid-template-columns: minmax(300px, .9fr) minmax(0, 1.4fr); gap: 20px; align-items: start; }
+    .subtitle-editor-grid .card { min-width: 0; }
+    .subtitle-editor-grid h2, .subtitle-editor-export h2 { margin-top: 0; }
+    .subtitle-editor-player #playerBox { margin-top: 12px; }
+    .subtitle-editor-player #playerBox .preview-actions { display: none; }
+    .subtitle-editor-player canvas { height: 150px; }
+    .subtitle-editor-export { margin-top: 20px; }
+    .subtitle-editor-export .wt-output-name-field { margin-bottom: 14px; }
+    .subtitle-editor-export .form-grid { max-width: 900px; }
+    .subtitle-editor-blank { padding: 20px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
+    .subtitle-editor-source { margin: 8px 0; overflow-wrap: anywhere; color: var(--muted); font-size: 13px; }
+    .subtitle-editor-view #processingProgress { margin-top: 14px; }
+    @media (max-width: 800px) { .subtitle-editor-grid { grid-template-columns: 1fr; } .subtitle-editor-header { flex-direction: column; gap: 12px; } }
     @media (max-width: 520px) { .subtitle-times { grid-template-columns: 1fr; } }
     pre { margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 12px; }
   </style>
   <link rel="stylesheet" href="../shared-controls.css">
 </head>
 <body class="wt-tool-page">
-  <main class="shell">
+  <main class="shell" id="mainWorkspace">
     <nav class="topbar" aria-label="页面导航" id="navLabel">
       <a class="home" href="../index.html">‹ <span id="homeLink">工具集</span></a>
       <div class="controls wt-top-actions">
-        <span class="version-badge">V1.2.4</span>
+        <span class="version-badge">V1.2.5</span>
         <div class="language" aria-label="Language">
           <button class="active" type="button" data-lang="zh">中文</button>
           <button type="button" data-lang="en">EN</button>
@@ -129,7 +153,7 @@
       <div class="workspace-stack">
       <div class="card workspace-card-settings">
         <h2 id="settingsTitle">处理设置</h2>
-        <label class="wt-output-name-field" for="outputBaseName"><span id="outputNameLabel">输出文件名（不含后缀，留空自动命名）</span><input id="outputBaseName" type="text" autocomplete="off" spellcheck="false" placeholder="留空使用自动名称"></label>
+        <label class="wt-output-name-field" id="outputNameField" for="outputBaseName"><span id="outputNameLabel">输出文件名（不含后缀，留空自动命名）</span><input id="outputBaseName" type="text" autocomplete="off" spellcheck="false" placeholder="留空使用自动名称"></label>
 
         <div class="tool-panel active" id="panel-convert">
           <div class="form-grid">
@@ -242,30 +266,15 @@
         </div>
 
         <div class="tool-panel" id="panel-subtitle">
-          <p class="subtitle-help" id="subtitleHelp">导入 VTT/LRC 或新建字幕行。播放音频时选中一行，点击打轴按钮记录当前时间；也可按 [ 标记开始、] 标记结束。</p>
-          <div class="subtitle-toolbar">
-            <input id="subtitleImport" type="file" accept=".vtt,.lrc,text/vtt,text/plain" hidden aria-label="导入字幕">
-            <button class="btn" id="subtitleImportButton" type="button">导入 VTT/LRC</button>
-            <span class="subtitle-import-name" id="subtitleImportName">未导入字幕</span>
-            <button class="btn" id="subtitleAdd" type="button">新增字幕行</button>
-            <span class="subtitle-clock" id="subtitleClock">00:00.000</span>
-          </div>
-          <div class="subtitle-actions">
-            <button class="btn" id="subtitleMarkStart" type="button">打轴：开始 [</button>
-            <button class="btn" id="subtitleMarkEnd" type="button">打轴：结束 ]</button>
-          </div>
-          <div class="subtitle-list" id="subtitleList"></div>
-          <p class="subtitle-help" id="subtitleFeedback" role="status"></p>
-          <div class="form-grid" style="margin-top:14px">
-            <label><span id="subtitleFormatLabel">字幕格式</span><select id="subtitleFormat"><option value="vtt">VTT</option><option value="lrc">LRC</option></select></label>
-            <label><span id="subtitleExportModeLabel">导出方式</span><select id="subtitleExportMode"><option value="separate">单独导出字幕文件</option><option value="embedded">内嵌字幕并导出音频</option></select></label>
-          </div>
-          <p class="subtitle-help" id="subtitleExportHelp" hidden>内嵌模式输出 M4A 音频（AAC + 可切换字幕轨）；播放支持取决于播放器。</p>
-          <button class="btn primary run-btn" type="button" data-action="subtitle">导出字幕</button>
+          <p class="subtitle-help" id="subtitleEntryHelp">在独立编辑视图中随音频播放打轴、编写字幕，并导出 LRC/VTT 或带字幕音频。</p>
+          <button class="btn primary" id="openSubtitleEditor" type="button">进入字幕编辑器</button>
+          <p class="subtitle-help" id="subtitleDraftStatus"></p>
         </div>
 
-        <div class="status-line" id="statusLine">等待输入文件</div>
-        <div id="processingProgress" hidden></div>
+        <div id="statusGroup">
+          <div class="status-line" id="statusLine">等待输入文件</div>
+          <div id="processingProgress" hidden></div>
+        </div>
       </div>
 
       <div class="card workspace-card-log">
@@ -273,6 +282,57 @@
         <div class="log" id="logBox"></div>
       </div>
       </div>
+    </section>
+  </main>
+  <main class="subtitle-editor-view" id="subtitleEditorView" hidden>
+    <header class="subtitle-editor-header">
+      <button class="btn" id="closeSubtitleEditor" type="button">← 返回音频处理</button>
+      <div class="subtitle-editor-heading">
+        <h1 id="subtitleEditorTitle">字幕编辑器</h1>
+        <p class="subtitle-help" id="subtitleHelp">导入 VTT/LRC 或新建字幕行。播放音频时点击打轴开始会新增一行，再点击打轴结束；也可按 [ 和 ]。</p>
+      </div>
+      <div class="subtitle-editor-top-actions">
+        <div class="subtitle-language" aria-label="Language">
+          <button class="active" type="button" data-lang="zh">中文</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+        <button class="theme-button" id="subtitleThemeButton" type="button" aria-label="切换主题">◐</button>
+      </div>
+    </header>
+    <div class="subtitle-editor-grid">
+      <section class="card subtitle-editor-player">
+        <h2 id="subtitlePlayerTitle">音频与打轴</h2>
+        <p class="subtitle-editor-source" id="subtitleSourceName"></p>
+        <div id="subtitlePlayerMount"></div>
+        <p class="subtitle-editor-blank" id="subtitleNoAudio">请先在工作区选择音频文件，然后进入编辑器打轴。无需音频也可手动编辑并单独导出字幕。</p>
+        <div class="subtitle-actions subtitle-edit-controls">
+          <button class="btn" id="subtitleMarkStart" type="button">打轴：开始 [</button>
+          <button class="btn" id="subtitleMarkEnd" type="button">打轴：结束 ]</button>
+          <span class="subtitle-clock" id="subtitleClock">00:00:00.000</span>
+        </div>
+      </section>
+      <section class="card subtitle-editor-cues subtitle-edit-controls">
+        <h2 id="subtitleCueTitle">字幕行</h2>
+        <div class="subtitle-toolbar">
+          <input id="subtitleImport" type="file" accept=".vtt,.lrc,text/vtt,text/plain" hidden aria-label="导入字幕">
+          <button class="btn" id="subtitleImportButton" type="button">导入 VTT/LRC</button>
+          <span class="subtitle-import-name" id="subtitleImportName">未导入字幕</span>
+          <button class="btn" id="subtitleAdd" type="button">新增字幕行</button>
+        </div>
+        <div class="subtitle-list" id="subtitleList"></div>
+        <p class="subtitle-help" id="subtitleFeedback" role="status"></p>
+      </section>
+    </div>
+    <section class="card subtitle-editor-export">
+      <h2 id="subtitleExportTitle">导出设置</h2>
+      <div id="subtitleOutputNameMount"></div>
+      <div class="form-grid" style="margin-top:14px">
+        <label><span id="subtitleFormatLabel">字幕格式</span><select id="subtitleFormat"><option value="lrc" selected>LRC</option><option value="vtt">VTT</option></select></label>
+        <label><span id="subtitleExportModeLabel">导出方式</span><select id="subtitleExportMode"><option value="separate">单独导出字幕文件</option><option value="embedded">内嵌字幕并导出音频</option></select></label>
+      </div>
+      <p class="subtitle-help" id="subtitleExportHelp" hidden>内嵌模式输出 M4A 音频（AAC + 可切换字幕轨）；播放支持取决于播放器。</p>
+      <button class="btn primary run-btn subtitle-edit-controls" type="button" data-action="subtitle">导出字幕</button>
+      <div id="subtitleStatusMount"></div>
     </section>
   </main>
   <script src="../shared-sortable.js"></script>

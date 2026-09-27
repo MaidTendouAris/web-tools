@@ -84,26 +84,41 @@ const server = http.createServer((req,res)=>{
  }
  await page.locator('#fileInput').setInputFiles(artifact('test.wav'));
  await page.locator('[data-tool="subtitle"]').click();
- await page.locator('#subtitleAdd').click();
- await page.locator('#subtitleList textarea').fill('First subtitle');
- await page.locator('#audioPlayer').evaluate(audio => { audio.currentTime = 5; });
+ const audioPageUrl=page.url();
+ await page.locator('#openSubtitleEditor').click();
+ if(page.url()!==audioPageUrl||!await page.locator('#subtitleEditorView').isVisible()||await page.locator('#mainWorkspace').isVisible())throw Error('Subtitle editor must stay in this page');
+ if(await page.locator('#subtitleFormat').inputValue()!=='lrc')throw Error('LRC must be the default subtitle format');
+ await page.locator('#audioPlayer').evaluate(audio => { window.originalAudioNode=audio; audio.currentTime = 5.125; });
  await page.locator('#subtitleMarkStart').click();
- await page.locator('#audioPlayer').evaluate(audio => { audio.currentTime = 6; });
+ await page.locator('#subtitleList textarea').fill('First subtitle');
+ await page.locator('#audioPlayer').evaluate(audio => { audio.currentTime = 6.875; });
+ await page.locator('#subtitleMarkEnd').click();
+ await page.locator('#audioPlayer').evaluate(audio => { audio.currentTime = 7.125; });
+ await page.locator('#subtitleMarkStart').click();
+ await page.locator('#subtitleList .subtitle-row').nth(1).locator('textarea').fill('Second subtitle');
+ await page.locator('#audioPlayer').evaluate(audio => { audio.currentTime = 8.375; });
  await page.locator('#subtitleMarkEnd').click();
  const cueTimes=await page.locator('#subtitleList input[data-time]').evaluateAll(inputs=>inputs.map(input=>Number(input.value)));
- if(cueTimes[0]!==5||cueTimes[1]!==6)throw Error('Subtitle timing buttons did not follow audio playback');
+ if(cueTimes.join(',')!=='5.125,6.875,7.125,8.375')throw Error('Each start must create a millisecond-precision subtitle cue');
+ await page.locator('#closeSubtitleEditor').click();
+ if(!await page.locator('#mainWorkspace').isVisible()||!await page.locator('#audioPlayer').evaluate(audio=>audio===window.originalAudioNode))throw Error('Returning from editor lost the audio player');
+ await page.locator('#openSubtitleEditor').click();
+ if(await page.locator('#subtitleList .subtitle-row').count()!==2)throw Error('Returning to editor lost cue edits');
+ await run('subtitle');
+ if(!await page.locator('#mainWorkspace').isVisible())throw Error('Editor did not return after export');
+ const lrc=await page.locator('#resultBox a').evaluate(async link=>await(await fetch(link.href)).text());
+ if(!lrc.includes('[00:05.125]First subtitle')||!lrc.includes('[00:07.125]Second subtitle'))throw Error('Millisecond LRC export incorrect');
+ await page.locator('#openSubtitleEditor').click();
+ await page.locator('#subtitleFormat').selectOption('vtt');
  await run('subtitle');
  const vtt=await page.locator('#resultBox a').evaluate(async link=>await(await fetch(link.href)).text());
- if(!vtt.includes('00:00:05.000 --> 00:00:06.000')||!vtt.includes('First subtitle'))throw Error('VTT export incorrect');
- await page.locator('#subtitleFormat').selectOption('lrc');
- await run('subtitle');
- const lrc=await page.locator('#resultBox a').evaluate(async link=>await(await fetch(link.href)).text());
- if(!lrc.includes('[00:05.00]First subtitle'))throw Error('LRC export incorrect');
- fs.writeFileSync(artifact('import.lrc'),'[00:01.20]First line\n[00:03.40]Second line\n');
+ if(!vtt.includes('00:00:05.125 --> 00:00:06.875')||!vtt.includes('First subtitle'))throw Error('VTT export incorrect');
+ await page.locator('#openSubtitleEditor').click();
+ fs.writeFileSync(artifact('import.lrc'),'[00:01.234]First line\n[00:03.456]Second line\n');
  await page.locator('#subtitleImport').setInputFiles(artifact('import.lrc'));
  await page.waitForFunction(()=>document.querySelectorAll('#subtitleList .subtitle-row').length===2);
  const importedLrc=await page.locator('#subtitleList input[data-time]').evaluateAll(inputs=>inputs.map(input=>Number(input.value)));
- if(importedLrc[0]!==1.2||importedLrc[1]!==3.4)throw Error('LRC import timing incorrect');
+ if(importedLrc[0]!==1.234||importedLrc[1]!==3.456)throw Error('LRC import timing incorrect');
  fs.writeFileSync(artifact('import.vtt'),'WEBVTT\n\n00:00:01.000 --> 00:00:02.500\nImported subtitle\n');
  await page.locator('#subtitleImport').setInputFiles(artifact('import.vtt'));
  await page.waitForFunction(()=>document.querySelector('#subtitleList textarea')?.value==='Imported subtitle');
@@ -222,11 +237,12 @@ const server = http.createServer((req,res)=>{
   await page.goto(base+'/'+kind+'-processing/'+kind+'-processing.html');
   if(kind==='audio'){
    await page.locator('[data-tool="subtitle"]').click();
+   await page.locator('#openSubtitleEditor').click();
+   await page.locator('#subtitleEditorView .subtitle-language button[data-lang="en"]').click();
+   await page.locator('#subtitleThemeButton').click();
    await page.locator('#subtitleAdd').click();
    await page.locator('#subtitleList textarea').fill('Responsive subtitle cue');
-   await page.locator('.language button[data-lang="en"]').click();
    if(!await page.locator('#subtitleMarkStart').innerText().then(text=>text.includes('Mark start')))throw Error('Subtitle English localization');
-   await page.locator('#themeButton').click();
   }
   await page.evaluate(()=>{const p=WebToolsControls.createProgress(document.querySelector('#processingProgress'),()=>{});p.start(3);p.file('测试文件名-long-video-name-with-extra-details.mp4',2);p.stage('processing');p.update(.47);});
   for(const width of [1920,1366,760,390]) {
