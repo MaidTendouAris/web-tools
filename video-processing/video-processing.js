@@ -526,7 +526,7 @@
             showRangeError(t("invalidTimeRange"), modal);
             return false;
         }
-        if (end - start < minGap) {
+        if (end - start < minGap - 0.000001) {
             showRangeError(changed === "end" ? t("invalidEndBeforeStart") : t("invalidStartAfterEnd"), modal);
             return false;
         }
@@ -663,10 +663,24 @@
             return;
         }
         if (currentTool === "gif") {
-            requestGifBounds(start, Number($("#gifEnd").value) || 3, "start", true);
+            var gifMax = getGifRangeMax();
+            var gifStart = Math.min(start, Math.max(0, gifMax - 0.1));
+            var gifEnd = Number($("#gifEnd").value) || 3;
+            if (gifEnd - gifStart < 0.1 - 0.000001)
+                gifEnd = Math.min(gifMax, gifStart + gifMax * 0.2);
+            if (gifEnd - gifStart < 0.1 - 0.000001)
+                gifEnd = gifMax;
+            requestGifBounds(gifStart, gifEnd, "start", true);
         }
         else {
-            requestClipBounds(start, Number($("#clipEnd").value) || 10, "start", true);
+            var clipMax = getClipRangeMax();
+            var clipStart = Math.min(start, Math.max(0, clipMax - 0.1));
+            var clipEnd = Number($("#clipEnd").value) || 10;
+            if (clipEnd - clipStart < 0.1 - 0.000001)
+                clipEnd = Math.min(clipMax, clipStart + clipMax * 0.2);
+            if (clipEnd - clipStart < 0.1 - 0.000001)
+                clipEnd = clipMax;
+            requestClipBounds(clipStart, clipEnd, "start", true);
         }
     }
     function syncClipEndFromPreview() {

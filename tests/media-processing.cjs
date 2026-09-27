@@ -83,6 +83,50 @@ const server = http.createServer((req,res)=>{
   }
  }
  await page.locator('#fileInput').setInputFiles(artifact('test.wav'));
+ await page.locator('[data-tool="subtitle"]').click();
+ await page.locator('#subtitleAdd').click();
+ await page.locator('#subtitleList textarea').fill('First subtitle');
+ await page.locator('#audioPlayer').evaluate(audio => { audio.currentTime = 5; });
+ await page.locator('#subtitleMarkStart').click();
+ await page.locator('#audioPlayer').evaluate(audio => { audio.currentTime = 6; });
+ await page.locator('#subtitleMarkEnd').click();
+ const cueTimes=await page.locator('#subtitleList input[data-time]').evaluateAll(inputs=>inputs.map(input=>Number(input.value)));
+ if(cueTimes[0]!==5||cueTimes[1]!==6)throw Error('Subtitle timing buttons did not follow audio playback');
+ await run('subtitle');
+ const vtt=await page.locator('#resultBox a').evaluate(async link=>await(await fetch(link.href)).text());
+ if(!vtt.includes('00:00:05.000 --> 00:00:06.000')||!vtt.includes('First subtitle'))throw Error('VTT export incorrect');
+ await page.locator('#subtitleFormat').selectOption('lrc');
+ await run('subtitle');
+ const lrc=await page.locator('#resultBox a').evaluate(async link=>await(await fetch(link.href)).text());
+ if(!lrc.includes('[00:05.00]First subtitle'))throw Error('LRC export incorrect');
+ fs.writeFileSync(artifact('import.lrc'),'[00:01.20]First line\n[00:03.40]Second line\n');
+ await page.locator('#subtitleImport').setInputFiles(artifact('import.lrc'));
+ await page.waitForFunction(()=>document.querySelectorAll('#subtitleList .subtitle-row').length===2);
+ const importedLrc=await page.locator('#subtitleList input[data-time]').evaluateAll(inputs=>inputs.map(input=>Number(input.value)));
+ if(importedLrc[0]!==1.2||importedLrc[1]!==3.4)throw Error('LRC import timing incorrect');
+ fs.writeFileSync(artifact('import.vtt'),'WEBVTT\n\n00:00:01.000 --> 00:00:02.500\nImported subtitle\n');
+ await page.locator('#subtitleImport').setInputFiles(artifact('import.vtt'));
+ await page.waitForFunction(()=>document.querySelector('#subtitleList textarea')?.value==='Imported subtitle');
+ await page.locator('#subtitleExportMode').selectOption('embedded');
+ await run('subtitle');
+ const embeddedName=await page.locator('#resultBox a').getAttribute('download');
+ if(!embeddedName.endsWith('.m4a'))throw Error('Embedded audio format incorrect');
+ const embeddedPath=artifact('output-subtitle'+embeddedName.replace(/[^\w.-]/g,'_'));
+ await page.locator('#fileInput').setInputFiles(embeddedPath);
+ await page.locator('[data-tool="metadata"]').click();
+ await run('read-metadata');
+ const embeddedProbe=JSON.parse(await page.locator('#resultBox pre').innerText());
+ if(!embeddedProbe.streams.some(stream=>stream.codec_type==='subtitle'&&stream.codec_name==='mov_text'))throw Error('Embedded M4A subtitle stream missing');
+ await page.locator('#fileInput').setInputFiles(artifact('test.wav'));
+ await page.locator('[data-tool="cut"]').click();
+ await page.locator('#audioPlayer').evaluate(audio => { audio.currentTime = 11; });
+ await page.locator('#usePreviewStart').click();
+ const audioRange=await page.locator('#cutStart, #cutEnd').evaluateAll(inputs=>inputs.map(input=>Number(input.value)));
+ if(audioRange[0]!==11||audioRange[1]!==12)throw Error('Audio preview start did not extend end to media end');
+ await page.locator('#cutStart').fill('0');
+ await page.locator('#cutEnd').fill('10');
+ await page.locator('#cutEnd').dispatchEvent('change');
+ await page.locator('[data-tool="convert"]').click();
  await page.locator('#outputBaseName').fill('input');
  await run('convert');
  if (await page.locator('#resultBox a').getAttribute('download') !== 'input.mp3') throw Error('Audio custom name or temporary input collision');
@@ -123,6 +167,17 @@ const server = http.createServer((req,res)=>{
  await page.goto(base+'/video-processing/video-processing.html');
  console.log('video inputs',await page.locator('input[type="file"]').evaluateAll(xs=>xs.map(x=>x.id)));
  await page.locator('#singleFileInput').setInputFiles(artifact('test.mp4'));
+ await page.locator('[data-tool="clip"]').click();
+ await page.locator('#videoPreview').evaluate(video => { video.currentTime = 11; });
+ await page.locator('#usePreviewStart').click();
+ const videoRange=await page.locator('#clipStart, #clipEnd').evaluateAll(inputs=>inputs.map(input=>Number(input.value)));
+ if(videoRange[0]!==11||videoRange[1]!==12)throw Error('Video preview start did not extend end to media end');
+ await page.locator('[data-tool="gif"]').click();
+ await page.locator('#videoPreview').evaluate(video => { video.currentTime = 4; });
+ await page.locator('#usePreviewStart').click();
+ const gifRange=await page.locator('#gifStart, #gifEnd').evaluateAll(inputs=>inputs.map(input=>Number(input.value)));
+ if(gifRange[0]!==4||Math.abs(gifRange[1]-6.4)>0.1)throw Error('GIF preview start did not use 20 percent duration');
+ await page.locator('[data-tool="metadata"]').click();
  await run('metadata');
  await page.locator('[data-tool="remux"]').click();
  await page.locator('#outputBaseName').fill('input');
@@ -165,6 +220,14 @@ const server = http.createServer((req,res)=>{
  await run('concat');
  for (const kind of ['audio','video']) {
   await page.goto(base+'/'+kind+'-processing/'+kind+'-processing.html');
+  if(kind==='audio'){
+   await page.locator('[data-tool="subtitle"]').click();
+   await page.locator('#subtitleAdd').click();
+   await page.locator('#subtitleList textarea').fill('Responsive subtitle cue');
+   await page.locator('.language button[data-lang="en"]').click();
+   if(!await page.locator('#subtitleMarkStart').innerText().then(text=>text.includes('Mark start')))throw Error('Subtitle English localization');
+   await page.locator('#themeButton').click();
+  }
   await page.evaluate(()=>{const p=WebToolsControls.createProgress(document.querySelector('#processingProgress'),()=>{});p.start(3);p.file('测试文件名-long-video-name-with-extra-details.mp4',2);p.stage('processing');p.update(.47);});
   for(const width of [1920,1366,760,390]) {
    await page.setViewportSize({width,height:900});

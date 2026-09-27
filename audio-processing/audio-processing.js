@@ -24,7 +24,7 @@
             title: "音频处理",
             home: "工具集",
             themeToggle: "切换主题",
-            lead: "使用本地 FFmpeg.wasm 资源进行音频转换、剪切、转封装、元数据编辑、预览、音量和速度处理。",
+            lead: "使用本地 FFmpeg.wasm 资源进行音频转换、剪切、转封装、元数据编辑、字幕编辑、预览、音量和速度处理。",
             engineMissing: "缺少处理资源，请使用页面顶部的本地资源卡片下载或导入。",
             wasmNeedsCache: "缺少处理资源，请使用页面顶部的本地资源卡片下载或导入。",
             wasmSelected: "已读取 ffmpeg-core.wasm",
@@ -34,6 +34,7 @@
             metadataTab: "元数据",
             volumeTab: "音量增益",
             speedTab: "速度调整",
+            subtitleTab: "字幕编辑",
             inputTitle: "输入文件",
             uploadTitle: "选择或拖放音频文件",
             uploadHint: "支持 MP3/AAC/OGG/M4A/WAV/FLAC/OPUS 等常见格式。",
@@ -96,6 +97,34 @@
             invalidStartAfterEnd: "开始时间必须早于结束时间。",
             invalidEndBeforeStart: "结束时间必须晚于开始时间。",
             invalidTimeRange: "时间范围超出音频时长，请重新选择。",
+            subtitleHelp: "导入 VTT/LRC 或新建字幕行。播放音频时选中一行，点击打轴按钮记录当前时间；也可按 [ 标记开始、] 标记结束。",
+            subtitleImport: "导入字幕",
+            subtitleImportButton: "导入 VTT/LRC",
+            subtitleNoImport: "未导入字幕",
+            subtitleAdd: "新增字幕行",
+            subtitleMarkStart: "打轴：开始 [",
+            subtitleMarkEnd: "打轴：结束 ]",
+            subtitleFormat: "字幕格式",
+            subtitleExportMode: "导出方式",
+            subtitleSeparate: "单独导出字幕文件",
+            subtitleEmbedded: "内嵌字幕并导出音频",
+            subtitleExportHelp: "内嵌模式输出 M4A 音频（AAC + 可切换字幕轨）；播放支持取决于播放器。",
+            subtitleExport: "导出字幕",
+            subtitleExportAudio: "导出带字幕音频",
+            subtitleLine: "字幕 {number}",
+            subtitleStart: "开始（秒）",
+            subtitleEnd: "结束（秒）",
+            subtitleText: "字幕文字",
+            subtitleDelete: "删除此行",
+            subtitleEmpty: "还没有字幕行。导入字幕或点击“新增字幕行”。",
+            subtitleNeedCue: "请先添加字幕行。",
+            subtitleNeedText: "第 {number} 行字幕文字不能为空。",
+            subtitleInvalidTime: "第 {number} 行的时间无效：结束必须晚于开始，且不能超出音频时长。",
+            subtitleImportError: "无法读取字幕文件，请检查 VTT/LRC 格式。",
+            subtitleImportDone: "已导入 {number} 行字幕。",
+            subtitleMarkNeedAudio: "请先选择音频并等待预览加载完成，才能打轴。",
+            subtitleMarkNeedStart: "结束时间必须晚于此行的开始时间。",
+            subtitleEmbedding: "正在将字幕内嵌至音频...",
             download: "下载",
             format: "格式",
             size: "大小",
@@ -114,7 +143,7 @@
             title: "Audio Processing",
             home: "Tools",
             themeToggle: "Toggle theme",
-            lead: "Use local FFmpeg.wasm resources for audio conversion, trimming, remuxing, metadata editing, preview, gain, and speed processing.",
+            lead: "Use local FFmpeg.wasm resources for audio conversion, trimming, remuxing, metadata and subtitle editing, preview, gain, and speed processing.",
             engineMissing: "Processing resources are missing. Download or import them using Local resources at the top of this page.",
             wasmNeedsCache: "Processing resources are missing. Download or import them using Local resources at the top of this page.",
             wasmSelected: "ffmpeg-core.wasm loaded",
@@ -124,6 +153,7 @@
             metadataTab: "Metadata",
             volumeTab: "Gain",
             speedTab: "Speed",
+            subtitleTab: "Subtitles",
             inputTitle: "Input File",
             uploadTitle: "Choose or drop an audio file",
             uploadHint: "Supports common formats such as MP3, AAC, OGG, M4A, WAV, FLAC, and OPUS.",
@@ -186,6 +216,34 @@
             invalidStartAfterEnd: "Start time must be earlier than end time.",
             invalidEndBeforeStart: "End time must be later than start time.",
             invalidTimeRange: "The time range is outside the audio duration. Choose another range.",
+            subtitleHelp: "Import VTT/LRC or add a cue. Select a cue while audio plays and mark the current time with the buttons, or press [ for start and ] for end.",
+            subtitleImport: "Import subtitles",
+            subtitleImportButton: "Import VTT/LRC",
+            subtitleNoImport: "No subtitles imported",
+            subtitleAdd: "Add cue",
+            subtitleMarkStart: "Mark start [",
+            subtitleMarkEnd: "Mark end ]",
+            subtitleFormat: "Subtitle format",
+            subtitleExportMode: "Export mode",
+            subtitleSeparate: "Export subtitle file",
+            subtitleEmbedded: "Embed subtitles and export audio",
+            subtitleExportHelp: "Embedded mode exports M4A audio (AAC + selectable subtitle track). Playback support depends on the player.",
+            subtitleExport: "Export Subtitles",
+            subtitleExportAudio: "Export Audio with Subtitles",
+            subtitleLine: "Cue {number}",
+            subtitleStart: "Start (s)",
+            subtitleEnd: "End (s)",
+            subtitleText: "Subtitle text",
+            subtitleDelete: "Delete cue",
+            subtitleEmpty: "No cues yet. Import subtitles or add a cue.",
+            subtitleNeedCue: "Add a cue first.",
+            subtitleNeedText: "Cue {number} has no text.",
+            subtitleInvalidTime: "Cue {number} has invalid timing. End must follow start and stay within the audio duration.",
+            subtitleImportError: "Cannot read the subtitle file. Check its VTT/LRC format.",
+            subtitleImportDone: "Imported {number} cues.",
+            subtitleMarkNeedAudio: "Choose audio and wait for preview metadata before timing cues.",
+            subtitleMarkNeedStart: "End must be later than this cue's start.",
+            subtitleEmbedding: "Embedding subtitles in audio...",
             download: "Download",
             format: "Format",
             size: "Size",
@@ -209,6 +267,10 @@
     var audioSortCounter = 0;
     var currentTool = "convert";
     var singleFile = null;
+    var subtitleCues = [];
+    var subtitleCueId = 0;
+    var selectedSubtitleId = null;
+    var subtitleImportedName = "";
     var previewUrl = "";
     var previewStopTimer = null;
     var lastValidStart = 0;
@@ -301,6 +363,7 @@
         setText('[data-tool="metadata"]', "metadataTab");
         setText('[data-tool="volume"]', "volumeTab");
         setText('[data-tool="speed"]', "speedTab");
+        setText('[data-tool="subtitle"]', "subtitleTab");
         setText("#inputTitle", "inputTitle");
         setText("#uploadTitle", "uploadTitle");
         setText("#uploadHint", "uploadHint");
@@ -340,6 +403,19 @@
         setText("#keepPitchLabel", "keepPitch");
         setText("#speedArgsLabel", "speedArgs");
         setText("#applyPreviewSpeed", "previewSpeed");
+        setText("#subtitleHelp", "subtitleHelp");
+        $("#subtitleImport").setAttribute("aria-label", t("subtitleImport"));
+        setText("#subtitleImportButton", "subtitleImportButton");
+        $("#subtitleImportName").textContent = subtitleImportedName || t("subtitleNoImport");
+        setText("#subtitleAdd", "subtitleAdd");
+        setText("#subtitleMarkStart", "subtitleMarkStart");
+        setText("#subtitleMarkEnd", "subtitleMarkEnd");
+        setText("#subtitleFormatLabel", "subtitleFormat");
+        setText("#subtitleExportModeLabel", "subtitleExportMode");
+        setText('#subtitleExportMode option[value="separate"]', "subtitleSeparate");
+        setText('#subtitleExportMode option[value="embedded"]', "subtitleEmbedded");
+        setText("#subtitleExportHelp", "subtitleExportHelp");
+        updateSubtitleExportMode();
         setText("#outputTitle", "outputTitle");
         setText("#logTitle", "logTitle");
         setButtonText('[data-action="convert"]', "convert");
@@ -353,6 +429,7 @@
             button.classList.toggle("active", button.dataset.lang === language);
         });
         renderFile();
+        renderSubtitleCues();
         if (!$("#resultBox").dataset.hasOutput)
             $("#resultBox").textContent = t("noOutput");
         if (!singleFile)
@@ -611,7 +688,7 @@
         var max = getMediaDuration();
         var nextStart = clamp(start, 0, max);
         var nextEnd = clamp(end, 0, max);
-        if (nextEnd - nextStart < 0.1) {
+        if (nextEnd - nextStart < 0.1 - 0.000001) {
             nextStart = lastValidStart;
             nextEnd = lastValidEnd;
         }
@@ -640,7 +717,7 @@
             setCutBounds(lastValidStart, lastValidEnd);
             return false;
         }
-        if (end - start < 0.1) {
+        if (end - start < 0.1 - 0.000001) {
             showRangeError(changed === "end" ? t("invalidEndBeforeStart") : t("invalidStartAfterEnd"), modal);
             setCutBounds(lastValidStart, lastValidEnd);
             return false;
@@ -655,7 +732,14 @@
             showRangeError(t("invalidPreviewTime"), true);
             return;
         }
-        requestCutBounds(current, Number($("#cutEnd").value), "start", true);
+        var max = getMediaDuration();
+        var start = Math.min(current, Math.max(0, max - 0.1));
+        var end = Number($("#cutEnd").value);
+        if (end - start < 0.1 - 0.000001)
+            end = Math.min(max, start + max * 0.2);
+        if (end - start < 0.1 - 0.000001)
+            end = max;
+        requestCutBounds(start, end, "start", true);
     }
     function syncEndFromPreview() {
         var audio = $("#audioPlayer");
@@ -680,6 +764,230 @@
         previewStopTimer = window.setTimeout(function () {
             audio.pause();
         }, Math.max(0.1, end - start) * 1000);
+    }
+    function subtitleTime(value, lrc = false) {
+        var millis = Math.round(Math.max(0, value) * 1000);
+        var hours = Math.floor(millis / 3600000);
+        var minutes = Math.floor(millis / 60000) % 60;
+        var seconds = Math.floor(millis / 1000) % 60;
+        var fraction = millis % 1000;
+        var pad = function (n, size = 2) { return String(n).padStart(size, "0"); };
+        if (lrc) {
+            var centis = Math.round(millis / 10);
+            return pad(Math.floor(centis / 6000)) + ":" + pad(Math.floor(centis / 100) % 60) + "." + pad(centis % 100);
+        }
+        return pad(hours) + ":" + pad(minutes) + ":" + pad(seconds) + "." + pad(fraction, 3);
+    }
+    function parseSubtitleTime(value) {
+        var parts = value.trim().replace(",", ".").split(":");
+        if (parts.length < 2 || parts.length > 3 || !parts.slice(0, -1).every(function (part) { return /^\d+$/.test(part); }) || !/^\d{1,2}\.\d{1,3}$/.test(parts[parts.length - 1]))
+            return NaN;
+        var hasHours = parts.length === 3;
+        var seconds = Number(parts.pop());
+        var minutes = Number(parts.pop());
+        var hours = parts.length ? Number(parts.pop()) : 0;
+        if (seconds >= 60 || (hasHours && minutes >= 60))
+            return NaN;
+        return hours * 3600 + minutes * 60 + seconds;
+    }
+    function parseSubtitleFile(text, format) {
+        var normalized = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+        var cues = [];
+        if (format === "vtt") {
+            if (!/^WEBVTT(?:\s|$)/.test(normalized))
+                throw new Error(t("subtitleImportError"));
+            normalized.split(/\n\s*\n/).slice(1).forEach(function (block) {
+                var lines = block.trim().split("\n");
+                if (!lines.length || /^(?:NOTE|STYLE|REGION)(?:\s|$)/.test(lines[0]))
+                    return;
+                var timingIndex = lines.findIndex(function (line) { return line.includes("-->"); });
+                if (timingIndex < 0)
+                    return;
+                var match = /^\s*(\S+)\s+-->\s+(\S+)/.exec(lines[timingIndex]);
+                if (!match)
+                    throw new Error(t("subtitleImportError"));
+                var start = parseSubtitleTime(match[1]);
+                var end = parseSubtitleTime(match[2]);
+                if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
+                    throw new Error(t("subtitleImportError"));
+                cues.push({ start: start, end: end, text: lines.slice(timingIndex + 1).join("\n").trim() });
+            });
+        }
+        else {
+            normalized.split("\n").forEach(function (line) {
+                var stamps = Array.from(line.matchAll(/\[(\d+):([0-5]\d)(?:[.:](\d{1,3}))?\]/g));
+                if (!stamps.length)
+                    return;
+                var lyric = line.replace(/\[(\d+):([0-5]\d)(?:[.:](\d{1,3}))?\]/g, "").trim();
+                stamps.forEach(function (stamp) {
+                    var fraction = stamp[3] ? Number(stamp[3]) / Math.pow(10, stamp[3].length) : 0;
+                    cues.push({ start: Number(stamp[1]) * 60 + Number(stamp[2]) + fraction, end: 0, text: lyric });
+                });
+            });
+            cues.sort(function (a, b) { return a.start - b.start; });
+            var duration = getSubtitleDuration();
+            cues.forEach(function (cue, index) {
+                var next = cues[index + 1];
+                cue.end = Math.min(duration, next && next.start > cue.start ? next.start : cue.start + 5);
+                if (cue.end <= cue.start)
+                    cue.end = cue.start + 0.1;
+            });
+        }
+        if (!cues.length)
+            throw new Error(t("subtitleImportError"));
+        return cues;
+    }
+    function getSubtitleDuration() {
+        var duration = Number($("#audioPlayer").duration);
+        return Number.isFinite(duration) && duration > 0 ? duration : Infinity;
+    }
+    function subtitleFeedback(message) {
+        $("#subtitleFeedback").textContent = message;
+        $("#statusLine").textContent = message;
+    }
+    function updateSubtitleExportMode() {
+        var embedded = $("#subtitleExportMode").value === "embedded";
+        $("#subtitleExportHelp").hidden = !embedded;
+        setButtonText('[data-action="subtitle"]', embedded ? "subtitleExportAudio" : "subtitleExport");
+    }
+    function selectedSubtitleCue() {
+        return subtitleCues.find(function (cue) { return cue.id === selectedSubtitleId; }) || null;
+    }
+    function updateSubtitlePlayback() {
+        var current = Number($("#audioPlayer").currentTime) || 0;
+        $("#subtitleClock").textContent = subtitleTime(current);
+        $$("#subtitleList .subtitle-row").forEach(function (row) {
+            var cue = subtitleCues.find(function (item) { return String(item.id) === row.dataset.cueId; });
+            row.classList.toggle("playing", !!cue && current >= cue.start && current < cue.end);
+        });
+    }
+    function renderSubtitleCues() {
+        var list = $("#subtitleList");
+        list.replaceChildren();
+        if (!subtitleCues.length) {
+            var empty = document.createElement("p");
+            empty.className = "subtitle-help";
+            empty.textContent = t("subtitleEmpty");
+            list.appendChild(empty);
+            return;
+        }
+        subtitleCues.forEach(function (cue, index) {
+            var row = document.createElement("div");
+            row.className = "subtitle-row" + (cue.id === selectedSubtitleId ? " selected" : "");
+            row.dataset.cueId = String(cue.id);
+            row.addEventListener("click", function () {
+                selectedSubtitleId = cue.id;
+                $$("#subtitleList .subtitle-row").forEach(function (item) { item.classList.toggle("selected", item === row); });
+            });
+            var head = document.createElement("div");
+            head.className = "subtitle-row-head";
+            var title = document.createElement("strong");
+            title.textContent = t("subtitleLine").replace("{number}", String(index + 1));
+            var remove = document.createElement("button");
+            remove.className = "btn";
+            remove.type = "button";
+            remove.textContent = t("subtitleDelete");
+            remove.addEventListener("click", function () {
+                subtitleCues = subtitleCues.filter(function (item) { return item !== cue; });
+                if (selectedSubtitleId === cue.id)
+                    selectedSubtitleId = subtitleCues[0]?.id || null;
+                renderSubtitleCues();
+            });
+            head.append(title, remove);
+            row.appendChild(head);
+            var times = document.createElement("div");
+            times.className = "subtitle-times";
+            ["start", "end"].forEach(function (kind) {
+                var label = document.createElement("label");
+                var span = document.createElement("span");
+                span.textContent = t(kind === "start" ? "subtitleStart" : "subtitleEnd");
+                var input = document.createElement("input");
+                input.type = "number";
+                input.min = "0";
+                input.step = "0.001";
+                input.value = String(cue[kind]);
+                input.dataset.time = kind;
+                input.addEventListener("input", function () { cue[kind] = input.value === "" ? NaN : Number(input.value); updateSubtitlePlayback(); });
+                label.append(span, input);
+                times.appendChild(label);
+            });
+            row.appendChild(times);
+            var label = document.createElement("label");
+            var labelText = document.createElement("span");
+            labelText.textContent = t("subtitleText");
+            var textarea = document.createElement("textarea");
+            textarea.value = cue.text;
+            textarea.addEventListener("input", function () { cue.text = textarea.value; });
+            label.append(labelText, textarea);
+            row.appendChild(label);
+            list.appendChild(row);
+        });
+        updateSubtitlePlayback();
+    }
+    function addSubtitleCue(focusText = true) {
+        var audio = $("#audioPlayer");
+        var duration = getSubtitleDuration();
+        var current = audio.src && Number.isFinite(audio.currentTime) ? Number(audio.currentTime) : 0;
+        var start = Math.min(current, Math.max(0, duration - 0.1));
+        var cue = { id: ++subtitleCueId, start: start, end: Math.min(duration, start + 3), text: "" };
+        subtitleCues.push(cue);
+        selectedSubtitleId = cue.id;
+        renderSubtitleCues();
+        var textarea = $("#subtitleList .subtitle-row.selected textarea");
+        if (textarea && focusText)
+            textarea.focus();
+    }
+    function markSubtitleTime(kind) {
+        var audio = $("#audioPlayer");
+        var duration = getSubtitleDuration();
+        if (!audio.src || !Number.isFinite(duration) || !Number.isFinite(audio.currentTime)) {
+            subtitleFeedback(t("subtitleMarkNeedAudio"));
+            return;
+        }
+        var cue = selectedSubtitleCue();
+        if (!cue) {
+            addSubtitleCue(false);
+            cue = selectedSubtitleCue();
+        }
+        if (!cue)
+            return;
+        var current = Math.min(duration, Number(audio.currentTime));
+        if (kind === "start") {
+            cue.start = Math.min(current, Math.max(0, duration - 0.1));
+            if (cue.end <= cue.start)
+                cue.end = Math.min(duration, cue.start + 3);
+        }
+        else {
+            if (current <= cue.start) {
+                subtitleFeedback(t("subtitleMarkNeedStart"));
+                return;
+            }
+            cue.end = current;
+        }
+        subtitleFeedback("");
+        renderSubtitleCues();
+    }
+    function validateSubtitleCues() {
+        if (!subtitleCues.length)
+            throw new Error(t("subtitleNeedCue"));
+        var duration = getSubtitleDuration();
+        return subtitleCues.map(function (cue, index) {
+            var number = String(index + 1);
+            if (!cue.text.trim())
+                throw new Error(t("subtitleNeedText").replace("{number}", number));
+            if (!Number.isFinite(cue.start) || !Number.isFinite(cue.end) || cue.start < 0 || Math.round(cue.end * 1000) <= Math.round(cue.start * 1000) || cue.end > duration + 0.001) {
+                throw new Error(t("subtitleInvalidTime").replace("{number}", number));
+            }
+            return { start: cue.start, end: cue.end, text: cue.text.trim() };
+        }).sort(function (a, b) { return a.start - b.start; });
+    }
+    function subtitleVtt(cues) {
+        return "WEBVTT\n\n" + cues.map(function (cue) {
+            return subtitleTime(cue.start) + " --> " + subtitleTime(cue.end) + "\n" + cue.text;
+        }).join("\n\n") + "\n";
+    }
+    function subtitleLrc(cues) {
+        return cues.map(function (cue) { return "[" + subtitleTime(cue.start, true) + "]" + cue.text.replace(/\n/g, " / "); }).join("\n") + "\n";
     }
     function renderWaveform(buffer) {
         var canvas = $("#waveformCanvas");
@@ -1152,6 +1460,43 @@
         await showBatchDownload(zipFiles, "speed-adjusted-audio.zip");
         showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("files"), value: String(zipFiles.length) }, { label: t("speedFactor"), value: formatSpeed(speed) }, { label: t("size"), value: formatBytes(totalSize) }]);
     }
+    async function handleSubtitleExport() {
+        var cues;
+        try {
+            cues = validateSubtitleCues();
+        }
+        catch (error) {
+            subtitleFeedback(error.message);
+            throw error;
+        }
+        subtitleFeedback("");
+        var format = $("#subtitleFormat").value;
+        var mode = $("#subtitleExportMode").value;
+        if (mode === "separate") {
+            var content = format === "lrc" ? subtitleLrc(cues) : subtitleVtt(cues);
+            var name = singleFile ? fileName(singleFile.name, "subtitles." + format) : (customOutputBase || "subtitles") + "." + format;
+            var blob = new Blob([content], { type: format === "vtt" ? "text/vtt;charset=utf-8" : "text/plain;charset=utf-8" });
+            showDownload(blob, name);
+            showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("files"), value: "1" }, { label: t("size"), value: formatBytes(blob.size) }]);
+            return;
+        }
+        if (!singleFile)
+            throw new Error(t("needFile"));
+        var prepared = await prepareInput();
+        var subtitlePath = "__wt_subtitles.vtt";
+        await prepared.core.FS.writeFile(subtitlePath, new TextEncoder().encode(subtitleVtt(cues)));
+        var outputName = fileName(prepared.file.name, "subtitled.m4a");
+        $("#statusLine").textContent = t("subtitleEmbedding");
+        var args = ["-i", prepared.inputName, "-f", "webvtt", "-i", subtitlePath,
+            "-map", "0:a:0", "-map", "1:s:0", "-c:a", "aac", "-b:a", "192k", "-c:s", "mov_text", outputName];
+        var core = await runFFmpeg(args);
+        var embeddedBlob = await readOutputBlob(core, outputName, "m4a");
+        showDownload(embeddedBlob, outputName);
+        showSummary([{ label: t("format"), value: "M4A" }, { label: t("files"), value: String(cues.length) }, { label: t("size"), value: formatBytes(embeddedBlob.size) }]);
+        await safeUnlink(core, prepared.inputName);
+        await safeUnlink(core, subtitlePath);
+        await safeUnlink(core, outputName);
+    }
     async function runAction(action) {
         if (running)
             return;
@@ -1194,6 +1539,8 @@
                 await handleVolume();
             if (action === "speed")
                 await handleSpeed();
+            if (action === "subtitle")
+                await handleSubtitleExport();
             checkCancelled();
             setStatus("done");
             progressUI.finish("done");
@@ -1283,7 +1630,10 @@
     });
     $("#audioPlayer").addEventListener("loadedmetadata", function () {
         setCutBounds(0, Math.min(10, getMediaDuration()));
+        updateSubtitlePlayback();
     });
+    $("#audioPlayer").addEventListener("timeupdate", updateSubtitlePlayback);
+    $("#audioPlayer").addEventListener("seeked", updateSubtitlePlayback);
     $("#audioPlayer").addEventListener("pause", clearPreviewStopTimer);
     $("#usePreviewStart").addEventListener("click", syncStartFromPreview);
     $("#usePreviewEnd").addEventListener("click", syncEndFromPreview);
@@ -1298,6 +1648,44 @@
     $("#speedFormat").addEventListener("change", syncSpeedDefaultArgs);
     $("#speedInput").addEventListener("change", readSpeedFactor);
     $("#applyPreviewSpeed").addEventListener("click", applyPreviewSpeed);
+    $("#subtitleAdd").addEventListener("click", function () { addSubtitleCue(); });
+    $("#subtitleImportButton").addEventListener("click", function () { $("#subtitleImport").click(); });
+    $("#subtitleMarkStart").addEventListener("click", function () { markSubtitleTime("start"); });
+    $("#subtitleMarkEnd").addEventListener("click", function () { markSubtitleTime("end"); });
+    $("#subtitleExportMode").addEventListener("change", updateSubtitleExportMode);
+    $("#subtitleImport").addEventListener("change", async function () {
+        var file = this.files?.[0];
+        if (!file || running)
+            return;
+        try {
+            var format = /\.lrc$/i.test(file.name) ? "lrc" : "vtt";
+            var imported = parseSubtitleFile(await file.text(), format);
+            subtitleCues = imported.map(function (cue) { return { id: ++subtitleCueId, start: cue.start, end: cue.end, text: cue.text }; });
+            selectedSubtitleId = subtitleCues[0].id;
+            subtitleImportedName = file.name;
+            $("#subtitleImportName").textContent = subtitleImportedName;
+            $("#subtitleFormat").value = format;
+            renderSubtitleCues();
+            subtitleFeedback(t("subtitleImportDone").replace("{number}", String(subtitleCues.length)));
+        }
+        catch (error) {
+            subtitleFeedback(error.message || t("subtitleImportError"));
+        }
+        finally {
+            this.value = "";
+        }
+    });
+    document.addEventListener("keydown", function (event) {
+        if (currentTool !== "subtitle" || running || event.altKey || event.ctrlKey || event.metaKey)
+            return;
+        var target = event.target;
+        if (target?.closest("input, textarea, select, [contenteditable='true']"))
+            return;
+        if (event.key === "[" || event.key === "]") {
+            event.preventDefault();
+            markSubtitleTime(event.key === "[" ? "start" : "end");
+        }
+    });
     $$("#speedPresets [data-speed]").forEach(function (button) {
         button.addEventListener("click", function () {
             $("#speedInput").value = button.dataset.speed;
