@@ -20,7 +20,8 @@
     m4a: "audio/mp4",
     wav: "audio/wav",
     flac: "audio/flac",
-    opus: "audio/opus"
+    opus: "audio/opus",
+    mkv: "audio/x-matroska"
   };
 
   const TEXT = {
@@ -98,6 +99,16 @@
       failed: "处理失败",
       needFile: "请先选择一个音频文件。",
       waveformFailed: "浏览器无法解码该音频用于波形预览，但仍可用 FFmpeg 处理。",
+      waveformWaiting: "正在等待音频信息…",
+      waveformReading: "正在读取音频：{percent}%",
+      waveformDecoding: "正在解码音频以生成波形…",
+      waveformDrawing: "正在绘制波形…",
+      waveformSkipped: "音频较大或超过 5 分钟，已跳过完整波形解码；仍可播放、打轴和处理。",
+      waveformWorkerLoading: "正在加载长音频波形处理资源…",
+      waveformProcessing: "正在处理长音频波形：{percent}%",
+      waveformResourceNeeded: "请先在资源卡片中准备 FFmpeg 资源，再重试生成长音频波形。",
+      waveformWorkerFailed: "无法生成长音频波形。仍可播放、打轴和处理。",
+      waveformRetry: "重试生成波形",
       invalidPreviewTime: "无法读取当前播放时间，请先选择音频并等待预览加载完成。",
       invalidStartAfterEnd: "开始时间必须早于结束时间。",
       invalidEndBeforeStart: "结束时间必须晚于开始时间。",
@@ -110,8 +121,16 @@
       subtitleToolsTitle: "字幕工具",
       subtitleOverviewTitle: "字幕总览",
       subtitleCueTitle: "字幕编辑",
-      subtitleSelectCue: "请从左侧字幕总览中选择一行，或先新增字幕行。",
+      subtitleSelectCue: "新增或导入字幕行后，可在这里逐行编辑。",
       subtitleNoText: "（未填写文字）",
+      subtitlePreviewTitle: "字幕预览",
+      subtitlePreviewOn: "关闭预览",
+      subtitlePreviewOff: "开启预览",
+      subtitlePreviewEmpty: "当前没有字幕",
+      subtitleAudioFormat: "内嵌音频格式",
+      subtitleAudioMp3: "MP3 · ID3 同步歌词",
+      subtitleMp3ExportHelp: "MP3 使用 ID3 同步歌词保存时间轴；是否显示歌词取决于播放器。",
+      subtitleInvalidAudioFormat: "不支持该内嵌音频格式。",
       subtitleExportTitle: "导出设置",
       subtitleNoAudio: "请先在工作区选择音频文件，然后进入编辑器打轴。无需音频也可手动编辑并单独导出字幕。",
       subtitleNoSource: "尚未选择音频",
@@ -127,7 +146,7 @@
       subtitleExportMode: "导出方式",
       subtitleSeparate: "单独导出字幕文件",
       subtitleEmbedded: "内嵌字幕并导出音频",
-      subtitleExportHelp: "内嵌模式输出 M4A 音频（AAC + 可切换字幕轨）；播放支持取决于播放器。",
+      subtitleExportHelp: "仅列出可容纳音轨和字幕轨的格式；播放支持取决于播放器。",
       subtitleExport: "导出字幕",
       subtitleExportAudio: "导出带字幕音频",
       subtitleLine: "字幕 {number}",
@@ -231,6 +250,16 @@
       failed: "Failed",
       needFile: "Choose one audio file first.",
       waveformFailed: "The browser could not decode this audio for waveform preview, but FFmpeg processing can still run.",
+      waveformWaiting: "Waiting for audio metadata…",
+      waveformReading: "Reading audio: {percent}%",
+      waveformDecoding: "Decoding audio to generate waveform…",
+      waveformDrawing: "Drawing waveform…",
+      waveformSkipped: "Large audio or audio over 5 minutes skips full waveform decoding. Playback, timing, and processing remain available.",
+      waveformWorkerLoading: "Loading resources for the long-audio waveform…",
+      waveformProcessing: "Processing long-audio waveform: {percent}%",
+      waveformResourceNeeded: "Prepare FFmpeg in the resource card, then retry the long-audio waveform.",
+      waveformWorkerFailed: "Could not generate the long-audio waveform. Playback, timing, and processing remain available.",
+      waveformRetry: "Retry waveform",
       invalidPreviewTime: "Cannot read the current playback time. Choose audio and wait for preview metadata.",
       invalidStartAfterEnd: "Start time must be earlier than end time.",
       invalidEndBeforeStart: "End time must be later than start time.",
@@ -243,8 +272,16 @@
       subtitleToolsTitle: "Subtitle Tools",
       subtitleOverviewTitle: "Subtitle Overview",
       subtitleCueTitle: "Edit Subtitle",
-      subtitleSelectCue: "Choose a cue from the overview, or add a new cue first.",
+      subtitleSelectCue: "Add or import cues to edit each one here.",
       subtitleNoText: "(No text yet)",
+      subtitlePreviewTitle: "Subtitle Preview",
+      subtitlePreviewOn: "Turn preview off",
+      subtitlePreviewOff: "Turn preview on",
+      subtitlePreviewEmpty: "No subtitle at this time",
+      subtitleAudioFormat: "Embedded audio format",
+      subtitleAudioMp3: "MP3 · ID3 timed lyrics",
+      subtitleMp3ExportHelp: "MP3 stores cue timing as ID3 synchronized lyrics. Whether lyrics appear depends on the player.",
+      subtitleInvalidAudioFormat: "Unsupported embedded audio format.",
       subtitleExportTitle: "Export Settings",
       subtitleNoAudio: "Choose audio in the workspace before timing cues. You can still edit and export a subtitle file without audio.",
       subtitleNoSource: "No audio selected",
@@ -260,7 +297,7 @@
       subtitleExportMode: "Export mode",
       subtitleSeparate: "Export subtitle file",
       subtitleEmbedded: "Embed subtitles and export audio",
-      subtitleExportHelp: "Embedded mode exports M4A audio (AAC + selectable subtitle track). Playback support depends on the player.",
+      subtitleExportHelp: "Only formats with audio and subtitle tracks are listed. Playback support depends on the player.",
       subtitleExport: "Export Subtitles",
       subtitleExportAudio: "Export Audio with Subtitles",
       subtitleLine: "Cue {number}",
@@ -307,6 +344,8 @@
   var selectedSubtitleId: number | null = null;
   var subtitleImportedName = "";
   var subtitleEditorOpen = false;
+  var subtitlePreviewEnabled = false;
+  var previewActiveCueId: number | null = null;
   var subtitlePlayerHome = $("#playerBox").parentElement;
   var subtitleNameHome = $("#outputNameField").parentElement;
   var subtitleStatusHome = $("#statusGroup").parentElement;
@@ -456,6 +495,11 @@
     setText("#subtitleToolsTitle", "subtitleToolsTitle");
     setText("#subtitleOverviewTitle", "subtitleOverviewTitle");
     setText("#subtitleCueTitle", "subtitleCueTitle");
+    setText("#subtitlePreviewTitle", "subtitlePreviewTitle");
+    setText("#subtitleAudioFormatLabel", "subtitleAudioFormat");
+    setText('#subtitleAudioFormat option[value="mp3"]', "subtitleAudioMp3");
+    setText("#subtitlePreviewToggle", subtitlePreviewEnabled ? "subtitlePreviewOn" : "subtitlePreviewOff");
+    setText("#subtitleWaveformRetry", "waveformRetry");
     setText("#subtitleExportTitle", "subtitleExportTitle");
     setText("#subtitleNoAudio", "subtitleNoAudio");
     setText("#subtitleHelp", "subtitleHelp");
@@ -469,7 +513,7 @@
     setText("#subtitleExportModeLabel", "subtitleExportMode");
     setText('#subtitleExportMode option[value="separate"]', "subtitleSeparate");
     setText('#subtitleExportMode option[value="embedded"]', "subtitleEmbedded");
-    setText("#subtitleExportHelp", "subtitleExportHelp");
+    updateSubtitleExportMode();
     updateSubtitleExportMode();
     setText("#outputTitle", "outputTitle");
     setText("#logTitle", "logTitle");
@@ -487,6 +531,8 @@
     renderFile();
     renderSubtitleCues();
     updateSubtitleDraftStatus();
+    updateSubtitlePlayback();
+    updateWaveformStatusUI();
     updateSubtitleSource();
     if (!$("#resultBox").dataset.hasOutput) $("#resultBox").textContent = t("noOutput");
     if (!singleFile) $("#statusLine").textContent = t("waitingInput");
@@ -939,12 +985,17 @@
     subtitleEditorOpen = true;
     updateSubtitleSource();
     updateSubtitlePlayback();
+    updateWaveformStatusUI();
+    requestAnimationFrame(function () { renderWaveform(waveformPeaks); });
+    if (singleFile && ["skipped", "resourceNeeded", "workerFailed"].includes(waveformState)) void drawLongWaveform(singleFile);
     window.scrollTo(0, 0);
     $("#closeSubtitleEditor").focus();
   }
 
   function closeSubtitleEditor(showOutput = false) {
     if (running || !subtitleEditorOpen) return;
+    cancelLongWaveform();
+    if (!waveformPeaks && singleFile && (singleFile.size > 32 * 1024 * 1024 || getSubtitleDuration() > 300)) setWaveformState("skipped");
     subtitleResourceHome.appendChild($("#resourceCard"));
     subtitlePlayerHome.insertBefore($("#playerBox"), $("#fileBox"));
     subtitleNameHome.insertBefore($("#outputNameField"), $("#panel-convert"));
@@ -953,6 +1004,8 @@
     $("#mainWorkspace").hidden = false;
     subtitleEditorOpen = false;
     updateSubtitleDraftStatus();
+    updateWaveformStatusUI();
+    requestAnimationFrame(function () { renderWaveform(waveformPeaks); });
     if (showOutput) $("#resultBox").scrollIntoView({ block: "center" });
     else $("#openSubtitleEditor").focus();
   }
@@ -960,6 +1013,8 @@
   function updateSubtitleExportMode() {
     var embedded = $("#subtitleExportMode").value === "embedded";
     $("#subtitleExportHelp").hidden = !embedded;
+    $("#subtitleAudioFormatField").hidden = !embedded;
+    $("#subtitleExportHelp").textContent = t($("#subtitleAudioFormat").value === "mp3" ? "subtitleMp3ExportHelp" : "subtitleExportHelp");
     setButtonText('[data-action="subtitle"]', embedded ? "subtitleExportAudio" : "subtitleExport");
   }
 
@@ -967,13 +1022,45 @@
     return subtitleCues.find(function (cue) { return cue.id === selectedSubtitleId; }) || null;
   }
 
+  function revealSubtitleItem(container: HTMLElement, item: HTMLElement) {
+    var host = container.getBoundingClientRect();
+    var child = item.getBoundingClientRect();
+    if (child.top < host.top) container.scrollTop += child.top - host.top;
+    else if (child.bottom > host.bottom) container.scrollTop += child.bottom - host.bottom;
+  }
+
+  function selectSubtitleCue(id: number, reveal = false) {
+    selectedSubtitleId = id;
+    $$("#subtitleOverview .subtitle-overview-item").forEach(function (row) {
+      var selected = row.dataset.cueId === String(id);
+      row.classList.toggle("selected", selected);
+      row.setAttribute("aria-pressed", String(selected));
+      if (selected && reveal) revealSubtitleItem($("#subtitleOverview"), row);
+    });
+    $$("#subtitleCueEditor .subtitle-cue-editor").forEach(function (card) {
+      var selected = card.dataset.cueId === String(id);
+      card.classList.toggle("selected", selected);
+      if (selected && reveal) revealSubtitleItem($("#subtitleCueEditor"), card);
+    });
+  }
+
   function updateSubtitlePlayback() {
     var current = Number($("#audioPlayer").currentTime) || 0;
     $("#subtitleClock").textContent = subtitleTime(current);
-    $$("#subtitleOverview .subtitle-overview-item").forEach(function (row) {
-      var cue = subtitleCues.find(function (item) { return String(item.id) === row.dataset.cueId; });
-      row.classList.toggle("playing", !!cue && current >= cue.start && current < cue.end);
+    var activeCues = subtitleCues.filter(function (cue) { return Number.isFinite(cue.start) && Number.isFinite(cue.end) && current >= cue.start && current < cue.end; })
+      .sort(function (a, b) { return a.start - b.start; });
+    var active = activeCues[activeCues.length - 1] || null;
+    $$("#subtitleOverview .subtitle-overview-item, #subtitleCueEditor .subtitle-cue-editor").forEach(function (item) {
+      item.classList.toggle("playing", !!active && item.dataset.cueId === String(active.id));
     });
+    if (!subtitlePreviewEnabled) return;
+    var sorted = subtitleCues.slice().sort(function (a, b) { return a.start - b.start; });
+    var index = active ? sorted.indexOf(active) : -1;
+    $("#subtitlePreviewCurrent").textContent = active ? (active.text.trim() || t("subtitleNoText")) : t("subtitlePreviewEmpty");
+    $("#subtitlePreviewPrevious").textContent = index > 0 ? sorted[index - 1].text.trim().replace(/\s+/g, " ") : "";
+    $("#subtitlePreviewNext").textContent = index >= 0 && index < sorted.length - 1 ? sorted[index + 1].text.trim().replace(/\s+/g, " ") : "";
+    if (active && active.id !== previewActiveCueId && subtitleEditorOpen) selectSubtitleCue(active.id, true);
+    previewActiveCueId = active?.id || null;
   }
 
   function updateSubtitleOverviewItem(cue: SubtitleCue) {
@@ -1007,10 +1094,7 @@
       row.setAttribute("aria-pressed", String(cue.id === selectedSubtitleId));
       row.dataset.cueId = String(cue.id);
       row.addEventListener("click", function () {
-        selectedSubtitleId = cue.id;
-        renderSubtitleCues();
-        var active = $$("#subtitleOverview .subtitle-overview-item").find(function (item) { return item.dataset.cueId === String(cue.id); });
-        active?.focus({ preventScroll: true });
+        selectSubtitleCue(cue.id, true);
       });
       var title = document.createElement("strong");
       title.textContent = t("subtitleLine").replace("{number}", String(index + 1));
@@ -1022,27 +1106,23 @@
       list.appendChild(row);
       updateSubtitleOverviewItem(cue);
     });
-    var selected = selectedSubtitleCue();
-    if (!selected) {
-      var prompt = document.createElement("p");
-      prompt.className = "subtitle-help";
-      prompt.textContent = t("subtitleSelectCue");
-      editor.appendChild(prompt);
-    } else {
-      var selectedIndex = subtitleCues.indexOf(selected);
+    subtitleCues.forEach(function (cue, index) {
       var detail = document.createElement("div");
-      detail.className = "subtitle-cue-editor";
+      detail.className = "subtitle-cue-editor" + (cue.id === selectedSubtitleId ? " selected" : "");
+      detail.dataset.cueId = String(cue.id);
+      detail.addEventListener("focusin", function () { selectSubtitleCue(cue.id, true); });
+      detail.addEventListener("click", function () { selectSubtitleCue(cue.id); });
       var head = document.createElement("div");
       head.className = "subtitle-cue-editor-head";
       var title = document.createElement("strong");
-      title.textContent = t("subtitleLine").replace("{number}", String(selectedIndex + 1));
+      title.textContent = t("subtitleLine").replace("{number}", String(index + 1));
       var remove = document.createElement("button");
       remove.className = "btn";
       remove.type = "button";
       remove.textContent = t("subtitleDelete");
       remove.addEventListener("click", function () {
-        subtitleCues = subtitleCues.filter(function (item) { return item !== selected; });
-        selectedSubtitleId = subtitleCues[0]?.id || null;
+        subtitleCues = subtitleCues.filter(function (item) { return item !== cue; });
+        if (selectedSubtitleId === cue.id) selectedSubtitleId = subtitleCues[0]?.id || null;
         renderSubtitleCues();
       });
       head.append(title, remove);
@@ -1057,18 +1137,18 @@
         input.type = "number";
         input.min = "0";
         input.step = "0.001";
-        input.value = Number.isFinite(selected[kind]) ? selected[kind].toFixed(3) : "";
+        input.value = Number.isFinite(cue[kind]) ? cue[kind].toFixed(3) : "";
         input.dataset.time = kind;
         input.addEventListener("input", function () {
-          selected[kind] = input.value === "" ? NaN : Number(input.value);
-          updateSubtitleOverviewItem(selected);
+          cue[kind] = input.value === "" ? NaN : Number(input.value);
+          updateSubtitleOverviewItem(cue);
           updateSubtitlePlayback();
         });
         input.addEventListener("change", function () {
-          if (Number.isFinite(selected[kind])) {
-            selected[kind] = roundSubtitleTime(selected[kind]);
-            input.value = selected[kind].toFixed(3);
-            updateSubtitleOverviewItem(selected);
+          if (Number.isFinite(cue[kind])) {
+            cue[kind] = roundSubtitleTime(cue[kind]);
+            input.value = cue[kind].toFixed(3);
+            updateSubtitleOverviewItem(cue);
           }
         });
         label.append(span, input);
@@ -1079,12 +1159,12 @@
       var labelText = document.createElement("span");
       labelText.textContent = t("subtitleText");
       var textarea = document.createElement("textarea");
-      textarea.value = selected.text;
-      textarea.addEventListener("input", function () { selected.text = textarea.value; updateSubtitleOverviewItem(selected); });
+      textarea.value = cue.text;
+      textarea.addEventListener("input", function () { cue.text = textarea.value; updateSubtitleOverviewItem(cue); updateSubtitlePlayback(); });
       label.append(labelText, textarea);
       detail.appendChild(label);
       editor.appendChild(detail);
-    }
+    });
     updateSubtitlePlayback();
   }
 
@@ -1097,7 +1177,7 @@
     subtitleCues.push(cue);
     selectedSubtitleId = cue.id;
     renderSubtitleCues();
-    var textarea = $("#subtitleCueEditor textarea");
+    var textarea = $$("#subtitleCueEditor .subtitle-cue-editor").find(function (item) { return item.dataset.cueId === String(cue.id); })?.querySelector("textarea");
     if (textarea && focusText) textarea.focus();
   }
 
@@ -1145,35 +1225,249 @@
     return cues.map(function (cue) { return "[" + subtitleTime(cue.start, true) + "]" + cue.text.replace(/\n/g, " / "); }).join("\n") + "\n";
   }
 
-  function renderWaveform(buffer: AudioBuffer | null) {
-    var canvas = $("#waveformCanvas") as HTMLCanvasElement;
-    var ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--soft").trim() || "#eef2f7";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    if (!buffer) return;
+  function id3Synchsafe(value: number) {
+    if (!Number.isInteger(value) || value < 0 || value > 0x0fffffff) throw new Error(t("subtitleInvalidAudioFormat"));
+    return Uint8Array.of((value >>> 21) & 0x7f, (value >>> 14) & 0x7f, (value >>> 7) & 0x7f, value & 0x7f);
+  }
+
+  function readId3Synchsafe(bytes: Uint8Array, offset: number) {
+    var value = 0;
+    for (var index = 0; index < 4; index++) {
+      if (bytes[offset + index] > 0x7f) throw new Error(t("subtitleInvalidAudioFormat"));
+      value = (value << 7) | bytes[offset + index];
+    }
+    return value;
+  }
+
+  function id3Frame(name: string, body: Blob) {
+    var header = new Uint8Array(10);
+    for (var index = 0; index < 4; index++) header[index] = name.charCodeAt(index);
+    header.set(id3Synchsafe(body.size), 4);
+    return new Blob([header, body]);
+  }
+
+  async function embedMp3Lyrics(mp3: Blob, cues: Array<{ start: number; end: number; text: string }>) {
+    // ID3v2.4 SYLT stores UTF-8 lyric events with absolute millisecond timestamps.
+    // https://id3.org/id3v2.4.0-frames and https://id3.org/id3v2.4.0-structure
+    var encoder = new TextEncoder();
+    var boundaries = Array.from(new Set(cues.flatMap(function (cue) { return [Math.round(cue.start * 1000), Math.round(cue.end * 1000)]; }))).sort(function (a, b) { return a - b; });
+    var events: Array<{ time: number; text: string }> = [];
+    var previousText = "";
+    boundaries.forEach(function (time) {
+      var current = cues.filter(function (cue) { return Math.round(cue.start * 1000) <= time && Math.round(cue.end * 1000) > time; }).slice(-1)[0];
+      var text = current?.text || "";
+      if (text !== previousText) events.push({ time: time, text: text });
+      previousText = text;
+    });
+    var syltParts: BlobPart[] = [Uint8Array.of(3, 88, 88, 88, 2, 1, 0)];
+    events.forEach(function (event) {
+      if (event.time > 0xffffffff) throw new Error(t("subtitleInvalidTime").replace("{number}", "1"));
+      var textBytes = encoder.encode(event.text);
+      var entry = new Uint8Array(textBytes.length + 5);
+      entry.set(textBytes);
+      new DataView(entry.buffer).setUint32(textBytes.length + 1, event.time, false);
+      syltParts.push(entry);
+    });
+    var lyrics = cues.map(function (cue) { return cue.text; }).join("\n");
+    var lyricFrames: Blob[] = [
+      id3Frame("SYLT", new Blob(syltParts)),
+      id3Frame("USLT", new Blob([Uint8Array.of(3, 88, 88, 88, 0), encoder.encode(lyrics)]))
+    ];
+    var existingFrames: Blob[] = [];
+    var audioOffset = 0;
+    var header = new Uint8Array(await mp3.slice(0, 10).arrayBuffer());
+    if (header.length === 10 && header[0] === 73 && header[1] === 68 && header[2] === 51) {
+      if (header[3] !== 4 || header[5] !== 0) throw new Error(t("subtitleInvalidAudioFormat"));
+      var tagSize = readId3Synchsafe(header, 6);
+      audioOffset = 10 + tagSize;
+      if (audioOffset > mp3.size) throw new Error(t("subtitleInvalidAudioFormat"));
+      var data = new Uint8Array(await mp3.slice(10, audioOffset).arrayBuffer());
+      for (var position = 0; position + 10 <= data.length;) {
+        if (data[position] === 0) break;
+        var name = String.fromCharCode(data[position], data[position + 1], data[position + 2], data[position + 3]);
+        if (!/^[A-Z0-9]{4}$/.test(name)) throw new Error(t("subtitleInvalidAudioFormat"));
+        var size = readId3Synchsafe(data, position + 4);
+        var end = position + 10 + size;
+        if (!size || end > data.length) throw new Error(t("subtitleInvalidAudioFormat"));
+        if (name !== "SYLT" && name !== "USLT") existingFrames.push(new Blob([data.slice(position, end)]));
+        position = end;
+      }
+    }
+    var frames = existingFrames.concat(lyricFrames);
+    var size = frames.reduce(function (total, frame) { return total + frame.size; }, 0);
+    var tag = new Uint8Array(10);
+    tag.set([73, 68, 51, 4, 0, 0]);
+    tag.set(id3Synchsafe(size), 6);
+    checkCancelled();
+    return new Blob([tag, ...frames, mp3.slice(audioOffset)], { type: MIME.mp3 });
+  }
+
+  var waveformPeaks: Float32Array | null = null;
+  var waveformState = "idle";
+  var waveformPercent = 0;
+
+  function updateWaveformStatusUI() {
+    var status = $("#subtitleWaveformStatus");
+    status.hidden = !subtitleEditorOpen || waveformState === "idle";
+    if (status.hidden) return;
+    var key = "waveform" + waveformState.charAt(0).toUpperCase() + waveformState.slice(1);
+    $("#subtitleWaveformStatusText").textContent = t(key).replace("{percent}", String(waveformPercent));
+    var progress = $("#subtitleWaveformProgress") as HTMLProgressElement;
+    progress.hidden = ["skipped", "failed", "resourceNeeded", "workerFailed"].includes(waveformState);
+    $("#subtitleWaveformRetry").hidden = waveformState !== "resourceNeeded" && waveformState !== "workerFailed";
+    if (waveformState === "reading" || waveformState === "processing") progress.value = waveformPercent;
+    else progress.removeAttribute("value");
+  }
+
+  function setWaveformState(state: string, percent = 0) {
+    waveformState = state;
+    waveformPercent = percent;
+    updateWaveformStatusUI();
+  }
+
+  function makeWaveformPeaks(buffer: AudioBuffer) {
     var data = buffer.getChannelData(0);
-    var step = Math.ceil(data.length / canvas.width);
-    var amp = canvas.height / 2;
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--blue").trim() || "#2563eb";
-    ctx.beginPath();
-    for (var x = 0; x < canvas.width; x++) {
-      var min = 1;
-      var max = -1;
-      for (var i = 0; i < step; i += Math.max(1, Math.floor(step / 64))) {
-        var sample = data[(x * step) + i] || 0;
+    var bins = Math.min(8192, Math.max(1, data.length));
+    var peaks = new Float32Array(bins * 2);
+    var step = Math.ceil(data.length / bins);
+    for (var bin = 0; bin < bins; bin++) {
+      var start = bin * step;
+      var end = Math.min(data.length, start + step);
+      var stride = Math.max(1, Math.floor((end - start) / 64));
+      var min = 0, max = 0;
+      for (var i = start; i < end; i += stride) {
+        var sample = data[i];
         if (sample < min) min = sample;
         if (sample > max) max = sample;
       }
-      ctx.moveTo(x, (1 + min) * amp);
-      ctx.lineTo(x, (1 + max) * amp);
+      peaks[bin * 2] = min;
+      peaks[bin * 2 + 1] = max;
+    }
+    return peaks;
+  }
+
+  function makeWaveformPeaksFromBytes(data: Uint8Array) {
+    var bins = Math.min(8192, Math.max(1, data.length));
+    var peaks = new Float32Array(bins * 2);
+    var step = Math.ceil(data.length / bins);
+    for (var bin = 0; bin < bins; bin++) {
+      var start = bin * step;
+      var end = Math.min(data.length, start + step);
+      var stride = Math.max(1, Math.floor((end - start) / 64));
+      var min = 0, max = 0;
+      for (var i = start; i < end; i += stride) {
+        var sample = (data[i] - 128) / 128;
+        if (sample < min) min = sample;
+        if (sample > max) max = sample;
+      }
+      peaks[bin * 2] = min;
+      peaks[bin * 2 + 1] = max;
+    }
+    return peaks;
+  }
+
+  function renderWaveform(peaks: Float32Array | null) {
+    var canvas = $("#waveformCanvas") as HTMLCanvasElement;
+    var bounds = canvas.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+    var scale = Math.min(window.devicePixelRatio || 1, 2);
+    var width = Math.max(1, Math.round(bounds.width * scale));
+    var height = Math.max(1, Math.round(bounds.height * scale));
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+    var ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--soft").trim() || "#eef2f7";
+    ctx.fillRect(0, 0, width, height);
+    if (!peaks) return;
+    var bins = peaks.length / 2;
+    var amp = height / 2;
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--blue").trim() || "#2563eb";
+    ctx.lineWidth = Math.max(1, scale);
+    ctx.beginPath();
+    for (var x = 0; x < width; x++) {
+      var from = Math.floor(x * bins / width);
+      var to = Math.max(from + 1, Math.ceil((x + 1) * bins / width));
+      var min = 0, max = 0;
+      for (var bin = from; bin < to; bin++) {
+        min = Math.min(min, peaks[bin * 2]);
+        max = Math.max(max, peaks[bin * 2 + 1]);
+      }
+      ctx.moveTo(x + 0.5, (1 + min) * amp);
+      ctx.lineTo(x + 0.5, (1 + max) * amp);
     }
     ctx.stroke();
   }
 
+  function readWaveformBytes(file: File, request: number) {
+    return new Promise<ArrayBuffer>(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onprogress = function (event) {
+        if (request === waveformRequest && event.lengthComputable) setWaveformState("reading", Math.round(event.loaded / event.total * 100));
+      };
+      reader.onload = function () { resolve(reader.result as ArrayBuffer); };
+      reader.onerror = function () { reject(reader.error || new Error("FileReader failed")); };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
   var waveformRequest = 0;
   var waveformQueue = Promise.resolve();
+  var longWaveformWorker: any = null;
+
+  function cancelLongWaveform() {
+    if (longWaveformWorker) {
+      waveformRequest++;
+      longWaveformWorker.terminate();
+    }
+    longWaveformWorker = null;
+  }
+
+  async function drawLongWaveform(file: File) {
+    if (!subtitleEditorOpen || running || singleFile !== file || longWaveformWorker) return;
+    var request = ++waveformRequest;
+    var client: any = null;
+    try {
+      setWaveformState("workerLoading");
+      var records = await Promise.all([getCachedResource(FFMPEG_CORE_JS_RESOURCE_ID), getCachedResource(FFMPEG_CORE_WASM_RESOURCE_ID)]);
+      if (request !== waveformRequest || !subtitleEditorOpen || singleFile !== file || running) return;
+      if (!(window as any).WebToolsResources.available(records[0]) || !(window as any).WebToolsResources.available(records[1])) {
+        setWaveformState("resourceNeeded");
+        return;
+      }
+      client = (window as any).WebToolsMediaEngine.create({
+        log: function () {},
+        progress: function (event: any) {
+          if (request === waveformRequest && Number.isFinite(event.ratio)) setWaveformState("processing", Math.round(event.ratio * 100));
+        }
+      });
+      longWaveformWorker = client;
+      await client.load(records[0].content, records[1].content);
+      if (request !== waveformRequest || !subtitleEditorOpen || singleFile !== file || running) return;
+      var inputName = "__wt_waveform_input." + getExt(file.name);
+      await client.input(inputName, file);
+      if (request !== waveformRequest || !subtitleEditorOpen || singleFile !== file || running) return;
+      setWaveformState("processing");
+      await client.exec(["-i", inputName, "-map", "0:a:0", "-ac", "1", "-ar", "2000", "-c:a", "pcm_u8", "-f", "u8", "__wt_waveform.raw"], 1);
+      if (request !== waveformRequest || !subtitleEditorOpen || singleFile !== file || running) return;
+      var raw = await client.blob("__wt_waveform.raw", "application/octet-stream");
+      var bytes = new Uint8Array(await raw.arrayBuffer());
+      if (request !== waveformRequest || !subtitleEditorOpen || singleFile !== file || running) return;
+      setWaveformState("drawing");
+      waveformPeaks = makeWaveformPeaksFromBytes(bytes);
+      renderWaveform(waveformPeaks);
+      setWaveformState("idle");
+    } catch (error) {
+      if (request === waveformRequest && subtitleEditorOpen && singleFile === file && !running) {
+        setWaveformState("workerFailed");
+        appendLog(t("waveformWorkerFailed") + " " + (error as Error).message);
+      }
+    } finally {
+      client?.terminate();
+      if (longWaveformWorker === client) longWaveformWorker = null;
+    }
+  }
+
   async function drawWaveform(file: File) {
     var request = ++waveformRequest;
     var previous = waveformQueue;
@@ -1181,6 +1475,7 @@
       await previous;
       if (request !== waveformRequest || singleFile !== file || running) return;
       var player = $("#audioPlayer") as HTMLAudioElement;
+      setWaveformState("waiting");
       if (!Number.isFinite(player.duration)) {
         await new Promise<void>(function (resolve) {
           var timer = window.setTimeout(done, 2000);
@@ -1190,8 +1485,12 @@
       }
       if (request !== waveformRequest || singleFile !== file || running) return;
       if (file.size > 32 * 1024 * 1024 || !Number.isFinite(player.duration) || player.duration > 300) {
+        waveformPeaks = null;
         renderWaveform(null);
-        appendLog(currentLanguage === "zh" ? "已跳过大文件或长音频的波形解码，仍可正常预览和处理。" : "Waveform decoding skipped for large or long audio. Playback and processing remain available.");
+        setWaveformState("skipped");
+        $("#statusLine").textContent = t("done");
+        appendLog(t("waveformSkipped"));
+        if (subtitleEditorOpen) void drawLongWaveform(file);
         return;
       }
       var context: AudioContext | null = null;
@@ -1199,11 +1498,22 @@
         var AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
         if (!AudioContextClass) throw new Error("No AudioContext");
         context = new AudioContextClass();
-        var buffer = await context.decodeAudioData(await file.arrayBuffer());
-        if (request === waveformRequest && singleFile === file && !running) renderWaveform(buffer);
+        setWaveformState("reading");
+        var bytes = await readWaveformBytes(file, request);
+        if (request !== waveformRequest || singleFile !== file || running) return;
+        setWaveformState("decoding");
+        var buffer = await context.decodeAudioData(bytes);
+        if (request === waveformRequest && singleFile === file && !running) {
+          setWaveformState("drawing");
+          waveformPeaks = makeWaveformPeaks(buffer);
+          renderWaveform(waveformPeaks);
+          setWaveformState("idle");
+        }
       } catch (_error) {
         if (request === waveformRequest && singleFile === file && !running) {
+          waveformPeaks = null;
           renderWaveform(null);
+          setWaveformState("failed");
           appendLog(t("waveformFailed"));
         }
       } finally {
@@ -1277,7 +1587,11 @@
 
   async function setPreviewFile(file: File | null) {
     if (running) return;
+    cancelLongWaveform();
     singleFile = file;
+    waveformPeaks = null;
+    setWaveformState("idle");
+    renderWaveform(null);
     updateSubtitleSource();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     previewUrl = "";
@@ -1629,19 +1943,24 @@
       return;
     }
     if (!singleFile) throw new Error(t("needFile"));
+    var audioFormat = $("#subtitleAudioFormat").value;
+    if (audioFormat !== "m4a" && audioFormat !== "mkv" && audioFormat !== "mp3") throw new Error(t("subtitleInvalidAudioFormat"));
     var prepared = await prepareInput();
-    var subtitlePath = "__wt_subtitles.vtt";
-    await prepared.core.FS.writeFile(subtitlePath, new TextEncoder().encode(subtitleVtt(cues)));
-    var outputName = fileName(prepared.file.name, "subtitled.m4a");
+    var outputName = fileName(prepared.file.name, "subtitled." + audioFormat);
     $("#statusLine").textContent = t("subtitleEmbedding");
-    var args = ["-i", prepared.inputName, "-f", "webvtt", "-i", subtitlePath,
-      "-map", "0:a:0", "-map", "1:s:0", "-c:a", "aac", "-b:a", "192k", "-c:s", "mov_text", outputName];
+    var subtitlePath = "__wt_subtitles.vtt";
+    if (audioFormat !== "mp3") await prepared.core.FS.writeFile(subtitlePath, new TextEncoder().encode(subtitleVtt(cues)));
+    var args = audioFormat === "mp3"
+      ? ["-i", prepared.inputName, "-map", "0:a:0", "-c:a", "libmp3lame", "-b:a", "192k", "-id3v2_version", "4", outputName]
+      : ["-i", prepared.inputName, "-f", "webvtt", "-i", subtitlePath,
+        "-map", "0:a:0", "-map", "1:s:0", "-c:a", audioFormat === "m4a" ? "aac" : "libopus", "-b:a", audioFormat === "m4a" ? "192k" : "128k", "-c:s", audioFormat === "m4a" ? "mov_text" : "subrip", outputName];
     var core = await runFFmpeg(args);
-    var embeddedBlob = await readOutputBlob(core, outputName, "m4a");
+    var encodedBlob = await readOutputBlob(core, outputName, audioFormat);
+    var embeddedBlob = audioFormat === "mp3" ? await embedMp3Lyrics(encodedBlob, cues) : encodedBlob;
     showDownload(embeddedBlob, outputName);
-    showSummary([{ label: t("format"), value: "M4A" }, { label: t("files"), value: String(cues.length) }, { label: t("size"), value: formatBytes(embeddedBlob.size) }]);
+    showSummary([{ label: t("format"), value: audioFormat.toUpperCase() }, { label: t("files"), value: String(cues.length) }, { label: t("size"), value: formatBytes(embeddedBlob.size) }]);
     await safeUnlink(core, prepared.inputName);
-    await safeUnlink(core, subtitlePath);
+    if (audioFormat !== "mp3") await safeUnlink(core, subtitlePath);
     await safeUnlink(core, outputName);
   }
 
@@ -1667,6 +1986,8 @@
     progressUI.file(singleFile ? singleFile.name : "", 1);
     $("#audioPlayer").pause();
     waveformRequest++;
+    cancelLongWaveform();
+    setWaveformState(!waveformPeaks && singleFile && (singleFile.size > 32 * 1024 * 1024 || getSubtitleDuration() > 300) ? "skipped" : "idle");
     $$(".run-btn").forEach(function (button) { button.disabled = true; });
     clearRunOutput();
     setStatus("running");
@@ -1768,10 +2089,11 @@
     var nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     preferences.setItem(THEME_STORAGE_KEY, nextTheme);
     applyTheme(nextTheme);
-    if (singleFile) void drawWaveform(singleFile);
+    renderWaveform(waveformPeaks);
   }
   $("#themeButton").addEventListener("click", toggleTheme);
   $("#subtitleThemeButton").addEventListener("click", toggleTheme);
+  window.addEventListener("resize", function () { renderWaveform(waveformPeaks); });
 
   $("#audioPlayer").addEventListener("loadedmetadata", function () {
     setCutBounds(0, Math.min(10, getMediaDuration()));
@@ -1799,7 +2121,18 @@
   $("#subtitleImportButton").addEventListener("click", function () { $("#subtitleImport").click(); });
   $("#subtitleMarkStart").addEventListener("click", function () { markSubtitleTime("start"); });
   $("#subtitleMarkEnd").addEventListener("click", function () { markSubtitleTime("end"); });
+  $("#subtitlePreviewToggle").addEventListener("click", function () {
+    subtitlePreviewEnabled = !subtitlePreviewEnabled;
+    previewActiveCueId = null;
+    this.setAttribute("aria-checked", String(subtitlePreviewEnabled));
+    this.classList.toggle("active", subtitlePreviewEnabled);
+    this.textContent = t(subtitlePreviewEnabled ? "subtitlePreviewOn" : "subtitlePreviewOff");
+    $("#subtitlePreview").hidden = !subtitlePreviewEnabled;
+    updateSubtitlePlayback();
+  });
+  $("#subtitleWaveformRetry").addEventListener("click", function () { if (singleFile) void drawLongWaveform(singleFile); });
   $("#subtitleExportMode").addEventListener("change", updateSubtitleExportMode);
+  $("#subtitleAudioFormat").addEventListener("change", updateSubtitleExportMode);
   $("#subtitleImport").addEventListener("change", async function () {
     var file = this.files?.[0];
     if (!file || running) return;

@@ -57,11 +57,25 @@
     .subtitle-overview-item.playing { background: color-mix(in srgb, var(--blue) 12%, var(--panel)); }
     .subtitle-overview-time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
     .subtitle-overview-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .subtitle-cue-editor { display: grid; gap: 14px; align-content: start; }
+    .subtitle-cue-editor { display: grid; gap: 14px; align-content: start; min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: var(--shadow); }
+    .subtitle-cue-editor.selected { border-color: var(--blue); box-shadow: 0 0 0 2px var(--ring), var(--shadow); }
+    .subtitle-cue-editor.playing { background: color-mix(in srgb, var(--blue) 6%, var(--panel)); }
     .subtitle-cue-editor-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .subtitle-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .subtitle-cue-editor textarea { min-height: 220px; }
+    .subtitle-cue-editor textarea { min-height: 100px; }
     .subtitle-cue-editor label { min-width: 0; }
+    .subtitle-cue-editor-list { display: grid; align-content: start; gap: 12px; max-height: 780px; overflow: auto; padding: 2px; }
+    .subtitle-preview-control { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+    .subtitle-preview-control h3 { margin: 0; }
+    .subtitle-preview { display: grid; gap: 4px; min-height: 92px; margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); text-align: center; }
+    .subtitle-preview[hidden] { display: none; }
+    .subtitle-preview-current { align-self: center; color: var(--blue); font-size: 18px; font-weight: 800; white-space: pre-line; }
+    .subtitle-preview-adjacent { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .subtitle-waveform-status { display: grid; gap: 6px; margin-top: 10px; color: var(--muted); font-size: 13px; }
+    .subtitle-waveform-status[hidden], .subtitle-waveform-status progress[hidden], #subtitleAudioFormatField[hidden] { display: none; }
+    .subtitle-waveform-status progress { width: 100%; height: 8px; accent-color: var(--blue); }
+    .subtitle-waveform-status .btn { justify-self: start; }
+    .subtitle-preview-control .btn[aria-checked="true"] { border-color: var(--blue); color: var(--blue); background: color-mix(in srgb, var(--blue) 8%, var(--panel)); }
     .subtitle-editor-view[hidden], #mainWorkspace[hidden] { display: none !important; }
     .subtitle-editor-view { width: min(1680px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 48px; }
     .subtitle-editor-topbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
@@ -74,6 +88,8 @@
     .subtitle-language button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
     .subtitle-editor-heading h1 { margin: 0; }
     .subtitle-editor-heading .subtitle-help { margin-bottom: 0; }
+    .wt-tool-page #mainWorkspace .hero { margin-top: 28px; }
+    .subtitle-editor-topbar { min-height: 52px; }
     .subtitle-editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
     .subtitle-editor-grid .card { min-width: 0; }
     .subtitle-editor-grid h2 { margin-top: 0; }
@@ -84,11 +100,12 @@
     .subtitle-editor-player canvas { height: 180px; }
     .subtitle-editor-export { margin-top: 22px; padding-top: 8px; border-top: 1px solid var(--line); }
     .subtitle-editor-export .form-grid { margin-top: 14px; }
-    .subtitle-editor-cues { min-height: 500px; }
+    .subtitle-editor-cues { min-width: 0; }
+    .subtitle-editor-cues > h2 { margin: 0 0 12px; padding: 16px 16px 0; }
     .subtitle-editor-blank { padding: 20px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
     .subtitle-editor-source { margin: 8px 0; overflow-wrap: anywhere; color: var(--muted); font-size: 13px; }
     .subtitle-editor-view #processingProgress { margin-top: 14px; }
-    @media (max-width: 800px) { .subtitle-editor-grid, .subtitle-editor-hero { grid-template-columns: 1fr; } .subtitle-editor-cues { min-height: 360px; } }
+    @media (max-width: 800px) { .subtitle-editor-grid, .subtitle-editor-hero { grid-template-columns: 1fr; } .subtitle-cue-editor-list { max-height: 560px; } }
     @media (max-width: 520px) { .subtitle-times { grid-template-columns: 1fr; } }
     pre { margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 12px; }
   </style>
@@ -99,7 +116,7 @@
     <nav class="topbar" aria-label="页面导航" id="navLabel">
       <a class="home" href="../index.html">‹ <span id="homeLink">工具集</span></a>
       <div class="controls wt-top-actions">
-        <span class="version-badge">V1.2.6</span>
+        <span class="version-badge">V1.2.7</span>
         <div class="language" aria-label="Language">
           <button class="active" type="button" data-lang="zh">中文</button>
           <button type="button" data-lang="en">EN</button>
@@ -296,7 +313,7 @@
       <div class="subtitle-editor-topbar">
         <button class="btn" id="closeSubtitleEditor" type="button">← 返回音频处理</button>
         <div class="subtitle-editor-top-actions">
-          <span class="version-badge">V1.2.6</span>
+          <span class="version-badge">V1.2.7</span>
           <div class="subtitle-language" aria-label="Language">
             <button class="active" type="button" data-lang="zh">中文</button>
             <button type="button" data-lang="en">EN</button>
@@ -317,6 +334,20 @@
       <p class="subtitle-editor-source" id="subtitleSourceName"></p>
       <div id="subtitlePlayerMount"></div>
       <p class="subtitle-editor-blank" id="subtitleNoAudio">请先在工作区选择音频文件，然后进入编辑器打轴。无需音频也可手动编辑并单独导出字幕。</p>
+      <div class="subtitle-waveform-status" id="subtitleWaveformStatus" role="status" hidden>
+        <span id="subtitleWaveformStatusText"></span>
+        <progress id="subtitleWaveformProgress" max="100"></progress>
+        <button class="btn" id="subtitleWaveformRetry" type="button" hidden>重试生成波形</button>
+      </div>
+      <div class="subtitle-preview-control subtitle-edit-controls">
+        <h3 id="subtitlePreviewTitle">字幕预览</h3>
+        <button class="btn" id="subtitlePreviewToggle" type="button" role="switch" aria-checked="false">开启预览</button>
+      </div>
+      <div class="subtitle-preview" id="subtitlePreview" hidden>
+        <span class="subtitle-preview-adjacent" id="subtitlePreviewPrevious"></span>
+        <span class="subtitle-preview-current" id="subtitlePreviewCurrent">当前没有字幕</span>
+        <span class="subtitle-preview-adjacent" id="subtitlePreviewNext"></span>
+      </div>
     </section>
     <div class="subtitle-editor-grid">
       <section class="card subtitle-editor-tools">
@@ -344,14 +375,15 @@
             <label><span id="subtitleFormatLabel">字幕格式</span><select id="subtitleFormat"><option value="lrc" selected>LRC</option><option value="vtt">VTT</option></select></label>
             <label><span id="subtitleExportModeLabel">导出方式</span><select id="subtitleExportMode"><option value="separate">单独导出字幕文件</option><option value="embedded">内嵌字幕并导出音频</option></select></label>
           </div>
-          <p class="subtitle-help" id="subtitleExportHelp" hidden>内嵌模式输出 M4A 音频（AAC + 可切换字幕轨）；播放支持取决于播放器。</p>
+          <label id="subtitleAudioFormatField" hidden><span id="subtitleAudioFormatLabel">内嵌音频格式</span><select id="subtitleAudioFormat"><option value="m4a">M4A · AAC</option><option value="mp3">MP3 · ID3 同步歌词</option><option value="mkv">MKV · Opus</option></select></label>
+          <p class="subtitle-help" id="subtitleExportHelp" hidden>仅列出可容纳音轨和字幕轨的格式；播放支持取决于播放器。</p>
           <button class="btn primary run-btn" type="button" data-action="subtitle">导出字幕</button>
         </div>
         <div id="subtitleStatusMount"></div>
       </section>
-      <section class="card subtitle-editor-cues subtitle-edit-controls">
+      <section class="subtitle-editor-cues subtitle-edit-controls">
         <h2 id="subtitleCueTitle">字幕编辑</h2>
-        <div id="subtitleCueEditor"></div>
+        <div class="subtitle-cue-editor-list" id="subtitleCueEditor"></div>
       </section>
     </div>
   </main>
