@@ -93,6 +93,20 @@ const server = http.createServer((req,res)=>{
  if(page.url()!==audioPageUrl||!await page.locator('#subtitleEditorView').isVisible()||await page.locator('#mainWorkspace').isVisible())throw Error('Subtitle editor must stay in this page');
  if(await page.locator('#subtitleFormat').inputValue()!=='lrc')throw Error('LRC must be the default subtitle format');
  await page.waitForFunction(()=>{const c=document.querySelector('#waveformCanvas');return c.width>=c.getBoundingClientRect().width&&c.width>900;});
+ if(!await page.locator('#subtitleWaveformStatus').evaluate(status=>status.parentElement.id==='waveformShell'))throw Error('Waveform status must be inside the waveform area');
+ const zoomDuration=await page.locator('#audioPlayer').evaluate(audio=>audio.duration);
+ await page.locator('#waveformZoomIn').click();
+ if(await page.locator('#waveformZoomLabel').innerText()!=='2×')throw Error('Waveform horizontal zoom did not update');
+ await page.locator('#waveformCanvas').click({position:{x:Math.round((await page.locator('#waveformCanvas').boundingBox()).width*.75),y:50}});
+ const seekTime=await page.locator('#audioPlayer').evaluate(audio=>audio.currentTime);
+ if(Math.abs(seekTime-zoomDuration*.375)>.1)throw Error('Zoomed waveform click did not seek to the visible timeline');
+ await page.waitForFunction(()=>{const head=document.querySelector('#waveformPlayhead');return !head.hidden&&parseFloat(head.style.left)>0;});
+ await page.locator('#waveformPan').evaluate(input=>{input.value='1000';input.dispatchEvent(new Event('input',{bubbles:true}));});
+ await page.locator('#waveformCanvas').click({position:{x:36,y:50}});
+ const panSeekTime=await page.locator('#audioPlayer').evaluate(audio=>audio.currentTime);
+ if(Math.abs(panSeekTime-zoomDuration/2)>.1)throw Error('Waveform pan did not move the visible timeline');
+ await page.locator('#waveformZoomReset').click();
+ if(await page.locator('#waveformZoomLabel').innerText()!=='1×')throw Error('Waveform zoom reset failed');
  await page.locator('#audioPlayer').evaluate(audio => { window.originalAudioNode=audio; audio.currentTime = 5.125; });
  await page.locator('#subtitleMarkStart').click();
  await page.locator('#subtitleCueEditor .subtitle-cue-editor').last().locator('textarea').fill('First subtitle');
@@ -203,6 +217,8 @@ const server = http.createServer((req,res)=>{
  await page.locator('[data-tool="subtitle"]').click();
  await page.locator('#openSubtitleEditor').click();
  await page.waitForFunction(()=>!document.querySelector('#subtitleWaveformStatus').hidden,null,{timeout:10000});
+ const waveformStatusWithinCanvas=await page.locator('#subtitleWaveformStatus').evaluate(status=>{const a=status.getBoundingClientRect(),b=document.querySelector('#waveformCanvas').getBoundingClientRect();return a.top>=b.top&&a.bottom<=b.bottom;});
+ if(!waveformStatusWithinCanvas)throw Error('Waveform progress must overlay the canvas');
  await page.waitForFunction(()=>document.querySelector('#subtitleWaveformStatus').hidden,null,{timeout:120000});
  const longWaveform=await page.locator('#waveformCanvas').evaluate(canvas=>{const data=canvas.getContext('2d').getImageData(Math.floor(canvas.width/2),Math.floor(canvas.height/2),1,1).data;return {width:canvas.width,css:canvas.getBoundingClientRect().width,blue:data[2]>data[0]+40};});
  if(longWaveform.width<longWaveform.css||!longWaveform.blue)throw Error('Long-audio worker waveform was not generated sharply');
@@ -333,6 +349,9 @@ const server = http.createServer((req,res)=>{
     if(layout.playerBottom>layout.toolsTop||layout.playerBottom>layout.editorTop)throw Error('Subtitle player must sit above both editing panels');
     if(width>800&&!(layout.toolsLeft<layout.editorLeft&&layout.titleRight<layout.resourcesLeft))throw Error('Subtitle editor desktop columns/header are out of order');
     if(width<=800&&Math.abs(layout.toolsLeft-layout.editorLeft)>1)throw Error('Subtitle editor mobile panels must stack');
+    if(!await page.locator('.subtitle-editor-cues').evaluate(card=>card.classList.contains('card')))throw Error('Subtitle cue editor must retain its enclosing card');
+    const cueDensity=await page.locator('#subtitleCueEditor .subtitle-cue-editor').first().evaluate(card=>{const times=card.querySelectorAll('.subtitle-times label'),textarea=card.querySelector('textarea');return {sameRow:Math.abs(times[0].getBoundingClientRect().top-times[1].getBoundingClientRect().top)<1,textHeight:textarea.getBoundingClientRect().height};});
+    if(!cueDensity.sameRow||cueDensity.textHeight>80)throw Error('Subtitle cue controls are not compact at '+width);
    }
    console.log('LAYOUT',kind,width,'OK');
    if(width===390||width===1920)await page.screenshot({path:artifact(kind+'-'+width+'.png'),fullPage:true});

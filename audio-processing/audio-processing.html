@@ -23,7 +23,19 @@
     .player-box { display: none; margin-top: 14px; }
     .player-box.show { display: grid; gap: 10px; }
     audio { width: 100%; }
-    canvas { width: 100%; height: 120px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+    canvas { display: block; width: 100%; height: 120px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); cursor: crosshair; }
+    .waveform-shell { position: relative; min-width: 0; }
+    .waveform-played, .waveform-playhead { position: absolute; top: 1px; bottom: 1px; pointer-events: none; }
+    .waveform-played { background: color-mix(in srgb, var(--blue) 10%, transparent); }
+    .waveform-playhead { width: 2px; background: var(--blue); box-shadow: 0 0 0 1px var(--panel); }
+    .waveform-playhead::before { content: ""; position: absolute; top: 0; left: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--blue); }
+    .waveform-played[hidden], .waveform-playhead[hidden] { display: none; }
+    .waveform-zoom { display: none; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 13px; }
+    .subtitle-editor-view .waveform-zoom { display: flex; }
+    .waveform-zoom .btn { min-width: 36px; padding: 5px 9px; }
+    .waveform-zoom output { min-width: 32px; color: var(--text); font-variant-numeric: tabular-nums; text-align: center; font-weight: 800; }
+    .wt-tool-page .waveform-pan { display: flex; flex: 1 1 180px; align-items: center; gap: 8px; min-width: 0; }
+    .waveform-zoom input { flex: 1; min-width: 60px; accent-color: var(--blue); }
     .preview-selector { display: grid; gap: 6px; margin-top: 12px; color: var(--muted); font-size: 13px; font-weight: 700; }
     .preview-selector select { font-weight: 700; }
     .file-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); cursor: pointer; transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
@@ -57,21 +69,22 @@
     .subtitle-overview-item.playing { background: color-mix(in srgb, var(--blue) 12%, var(--panel)); }
     .subtitle-overview-time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
     .subtitle-overview-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .subtitle-cue-editor { display: grid; gap: 14px; align-content: start; min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: var(--shadow); }
-    .subtitle-cue-editor.selected { border-color: var(--blue); box-shadow: 0 0 0 2px var(--ring), var(--shadow); }
+    .subtitle-cue-editor { display: grid; gap: 8px; align-content: start; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+    .subtitle-cue-editor.selected { border-color: var(--blue); box-shadow: 0 0 0 2px var(--ring); }
     .subtitle-cue-editor.playing { background: color-mix(in srgb, var(--blue) 6%, var(--panel)); }
-    .subtitle-cue-editor-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .subtitle-cue-editor-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .wt-tool-page .subtitle-cue-editor-head .btn { min-height: 32px; padding: 5px 9px; }
     .subtitle-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .subtitle-cue-editor textarea { min-height: 100px; }
-    .subtitle-cue-editor label { min-width: 0; }
-    .subtitle-cue-editor-list { display: grid; align-content: start; gap: 12px; max-height: 780px; overflow: auto; padding: 2px; }
+    .wt-tool-page .subtitle-cue-editor textarea { min-height: 56px; height: 56px; resize: vertical; }
+    .wt-tool-page .subtitle-cue-editor label { display: grid; gap: 3px; min-width: 0; }
+    .subtitle-cue-editor-list { display: grid; align-content: start; gap: 8px; max-height: 780px; overflow: auto; padding: 2px; }
     .subtitle-preview-control { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
     .subtitle-preview-control h3 { margin: 0; }
     .subtitle-preview { display: grid; gap: 4px; min-height: 92px; margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); text-align: center; }
     .subtitle-preview[hidden] { display: none; }
     .subtitle-preview-current { align-self: center; color: var(--blue); font-size: 18px; font-weight: 800; white-space: pre-line; }
     .subtitle-preview-adjacent { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .subtitle-waveform-status { display: grid; gap: 6px; margin-top: 10px; color: var(--muted); font-size: 13px; }
+    .subtitle-waveform-status { position: absolute; top: 50%; left: 50%; z-index: 2; display: grid; gap: 8px; width: min(440px, calc(100% - 24px)); padding: 12px; transform: translate(-50%, -50%); border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: var(--shadow); color: var(--muted); font-size: 13px; }
     .subtitle-waveform-status[hidden], .subtitle-waveform-status progress[hidden], #subtitleAudioFormatField[hidden] { display: none; }
     .subtitle-waveform-status progress { width: 100%; height: 8px; accent-color: var(--blue); }
     .subtitle-waveform-status .btn { justify-self: start; }
@@ -101,12 +114,12 @@
     .subtitle-editor-export { margin-top: 22px; padding-top: 8px; border-top: 1px solid var(--line); }
     .subtitle-editor-export .form-grid { margin-top: 14px; }
     .subtitle-editor-cues { min-width: 0; }
-    .subtitle-editor-cues > h2 { margin: 0 0 12px; padding: 16px 16px 0; }
+    .subtitle-editor-cues > h2 { margin: 0 0 12px; }
     .subtitle-editor-blank { padding: 20px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
     .subtitle-editor-source { margin: 8px 0; overflow-wrap: anywhere; color: var(--muted); font-size: 13px; }
     .subtitle-editor-view #processingProgress { margin-top: 14px; }
     @media (max-width: 800px) { .subtitle-editor-grid, .subtitle-editor-hero { grid-template-columns: 1fr; } .subtitle-cue-editor-list { max-height: 560px; } }
-    @media (max-width: 520px) { .subtitle-times { grid-template-columns: 1fr; } }
+    @media (max-width: 520px) { .subtitle-cue-editor { padding: 9px; } .subtitle-times { gap: 6px; } .wt-tool-page .waveform-pan { flex-basis: 100%; } }
     pre { margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 12px; }
   </style>
   <link rel="stylesheet" href="../shared-controls.css">
@@ -116,7 +129,7 @@
     <nav class="topbar" aria-label="页面导航" id="navLabel">
       <a class="home" href="../index.html">‹ <span id="homeLink">工具集</span></a>
       <div class="controls wt-top-actions">
-        <span class="version-badge">V1.2.7</span>
+        <span class="version-badge">V1.2.8</span>
         <div class="language" aria-label="Language">
           <button class="active" type="button" data-lang="zh">中文</button>
           <button type="button" data-lang="en">EN</button>
@@ -156,7 +169,23 @@
         </label>
         <div class="player-box" id="playerBox">
           <audio id="audioPlayer" preload="metadata"></audio>
-          <canvas id="waveformCanvas" width="900" height="160"></canvas>
+          <div class="waveform-shell" id="waveformShell">
+            <canvas id="waveformCanvas" width="900" height="160" aria-label="音频波形；点击以跳转播放位置"></canvas>
+            <div class="waveform-played" id="waveformPlayed" hidden></div>
+            <div class="waveform-playhead" id="waveformPlayhead" hidden></div>
+            <div class="subtitle-waveform-status" id="subtitleWaveformStatus" role="status" hidden>
+              <span id="subtitleWaveformStatusText"></span>
+              <progress id="subtitleWaveformProgress" max="100"></progress>
+              <button class="btn" id="subtitleWaveformRetry" type="button" hidden>重试生成波形</button>
+            </div>
+          </div>
+          <div class="waveform-zoom" id="waveformZoomControls">
+            <button class="btn" id="waveformZoomOut" type="button" aria-label="缩小波形">−</button>
+            <output id="waveformZoomLabel">1×</output>
+            <button class="btn" id="waveformZoomIn" type="button" aria-label="放大波形">+</button>
+            <button class="btn" id="waveformZoomReset" type="button">重置</button>
+            <label class="waveform-pan"><span id="waveformPanLabel">时间窗口</span><input id="waveformPan" type="range" min="0" max="1000" value="0" aria-label="波形时间窗口"></label>
+          </div>
           <div class="preview-actions">
             <button class="btn" id="usePreviewStart" type="button">使用当前时间为开始</button>
             <button class="btn" id="usePreviewEnd" type="button">使用当前时间为结束</button>
@@ -313,7 +342,7 @@
       <div class="subtitle-editor-topbar">
         <button class="btn" id="closeSubtitleEditor" type="button">← 返回音频处理</button>
         <div class="subtitle-editor-top-actions">
-          <span class="version-badge">V1.2.7</span>
+          <span class="version-badge">V1.2.8</span>
           <div class="subtitle-language" aria-label="Language">
             <button class="active" type="button" data-lang="zh">中文</button>
             <button type="button" data-lang="en">EN</button>
@@ -334,11 +363,6 @@
       <p class="subtitle-editor-source" id="subtitleSourceName"></p>
       <div id="subtitlePlayerMount"></div>
       <p class="subtitle-editor-blank" id="subtitleNoAudio">请先在工作区选择音频文件，然后进入编辑器打轴。无需音频也可手动编辑并单独导出字幕。</p>
-      <div class="subtitle-waveform-status" id="subtitleWaveformStatus" role="status" hidden>
-        <span id="subtitleWaveformStatusText"></span>
-        <progress id="subtitleWaveformProgress" max="100"></progress>
-        <button class="btn" id="subtitleWaveformRetry" type="button" hidden>重试生成波形</button>
-      </div>
       <div class="subtitle-preview-control subtitle-edit-controls">
         <h3 id="subtitlePreviewTitle">字幕预览</h3>
         <button class="btn" id="subtitlePreviewToggle" type="button" role="switch" aria-checked="false">开启预览</button>
@@ -381,7 +405,7 @@
         </div>
         <div id="subtitleStatusMount"></div>
       </section>
-      <section class="subtitle-editor-cues subtitle-edit-controls">
+      <section class="card subtitle-editor-cues subtitle-edit-controls">
         <h2 id="subtitleCueTitle">字幕编辑</h2>
         <div class="subtitle-cue-editor-list" id="subtitleCueEditor"></div>
       </section>

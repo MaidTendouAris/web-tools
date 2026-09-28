@@ -104,6 +104,11 @@
             waveformResourceNeeded: "请先在资源卡片中准备 FFmpeg 资源，再重试生成长音频波形。",
             waveformWorkerFailed: "无法生成长音频波形。仍可播放、打轴和处理。",
             waveformRetry: "重试生成波形",
+            waveformZoomOut: "缩小波形",
+            waveformZoomIn: "放大波形",
+            waveformZoomReset: "重置",
+            waveformPan: "时间窗口",
+            waveformSeek: "音频波形；点击以跳转播放位置",
             invalidPreviewTime: "无法读取当前播放时间，请先选择音频并等待预览加载完成。",
             invalidStartAfterEnd: "开始时间必须早于结束时间。",
             invalidEndBeforeStart: "结束时间必须晚于开始时间。",
@@ -255,6 +260,11 @@
             waveformResourceNeeded: "Prepare FFmpeg in the resource card, then retry the long-audio waveform.",
             waveformWorkerFailed: "Could not generate the long-audio waveform. Playback, timing, and processing remain available.",
             waveformRetry: "Retry waveform",
+            waveformZoomOut: "Zoom waveform out",
+            waveformZoomIn: "Zoom waveform in",
+            waveformZoomReset: "Reset",
+            waveformPan: "Time window",
+            waveformSeek: "Audio waveform; click to seek",
             invalidPreviewTime: "Cannot read the current playback time. Choose audio and wait for preview metadata.",
             invalidStartAfterEnd: "Start time must be earlier than end time.",
             invalidEndBeforeStart: "End time must be later than start time.",
@@ -489,6 +499,12 @@
         setText('#subtitleAudioFormat option[value="mp3"]', "subtitleAudioMp3");
         setText("#subtitlePreviewToggle", subtitlePreviewEnabled ? "subtitlePreviewOn" : "subtitlePreviewOff");
         setText("#subtitleWaveformRetry", "waveformRetry");
+        setText("#waveformZoomReset", "waveformZoomReset");
+        setText("#waveformPanLabel", "waveformPan");
+        $("#waveformZoomOut").setAttribute("aria-label", t("waveformZoomOut"));
+        $("#waveformZoomIn").setAttribute("aria-label", t("waveformZoomIn"));
+        $("#waveformPan").setAttribute("aria-label", t("waveformPan"));
+        $("#waveformCanvas").setAttribute("aria-label", t("waveformSeek"));
         setText("#subtitleExportTitle", "subtitleExportTitle");
         setText("#subtitleNoAudio", "subtitleNoAudio");
         setText("#subtitleHelp", "subtitleHelp");
@@ -978,6 +994,8 @@
         $("#subtitleEditorView").hidden = true;
         $("#mainWorkspace").hidden = false;
         subtitleEditorOpen = false;
+        waveformZoom = 1;
+        waveformViewStart = 0;
         updateSubtitleDraftStatus();
         updateWaveformStatusUI();
         requestAnimationFrame(function () { renderWaveform(waveformPeaks); });
@@ -1022,6 +1040,7 @@
     }
     function updateSubtitlePlayback() {
         var current = Number($("#audioPlayer").currentTime) || 0;
+        updateWaveformPlaybackPosition();
         $("#subtitleClock").textContent = subtitleTime(current);
         var activeCues = subtitleCues.filter(function (cue) { return Number.isFinite(cue.start) && Number.isFinite(cue.end) && current >= cue.start && current < cue.end; })
             .sort(function (a, b) { return a.start - b.start; });
@@ -1293,6 +1312,9 @@
     var waveformPeaks = null;
     var waveformState = "idle";
     var waveformPercent = 0;
+    var waveformZoom = 1;
+    var waveformViewStart = 0;
+    var waveformPlayheadFrame = 0;
     function updateWaveformStatusUI() {
         var status = $("#subtitleWaveformStatus");
         status.hidden = !subtitleEditorOpen || waveformState === "idle";
@@ -1356,6 +1378,59 @@
         }
         return peaks;
     }
+    function waveformViewport() {
+        var canvas = $("#waveformCanvas");
+        var width = canvas.getBoundingClientRect().width;
+        var duration = Number($("#audioPlayer").duration);
+        if (!Number.isFinite(duration) || duration <= 0)
+            duration = 0;
+        var visible = duration ? duration / waveformZoom : 0;
+        waveformViewStart = Math.max(0, Math.min(waveformViewStart, Math.max(0, duration - visible)));
+        return { width: width, duration: duration, visible: visible, start: waveformViewStart, left: Math.min(34, width / 5), right: Math.max(0, width - 8) };
+    }
+    function waveformTick(seconds, step) {
+        var precision = step >= 1 ? 0 : Math.min(3, Math.ceil(-Math.log10(step)));
+        var millis = Math.round(seconds * 1000);
+        var minutes = Math.floor(millis / 60000);
+        var tail = ((millis - minutes * 60000) / 1000).toFixed(precision).padStart(precision ? 3 + precision : 2, "0");
+        return minutes >= 60 ? Math.floor(minutes / 60) + ":" + String(minutes % 60).padStart(2, "0") + ":" + tail : minutes + ":" + tail;
+    }
+    function updateWaveformZoomUI() {
+        var viewport = waveformViewport();
+        $("#waveformZoomLabel").textContent = waveformZoom + "×";
+        $("#waveformZoomOut").disabled = waveformZoom <= 1 || !viewport.duration;
+        $("#waveformZoomIn").disabled = waveformZoom >= 8 || !viewport.duration;
+        $("#waveformZoomReset").disabled = waveformZoom <= 1 || !viewport.duration;
+        var pan = $("#waveformPan");
+        pan.disabled = waveformZoom <= 1 || !viewport.duration;
+        pan.value = String(Math.round(viewport.start / Math.max(0.001, viewport.duration - viewport.visible) * 1000));
+    }
+    function updateWaveformPlayheadOverlay() {
+        var viewport = waveformViewport();
+        var head = $("#waveformPlayhead");
+        var played = $("#waveformPlayed");
+        var player = $("#audioPlayer");
+        var current = Number(player.currentTime);
+        var visible = !!player.src && viewport.duration > 0 && viewport.width > 0 && Number.isFinite(current) && current >= viewport.start && current <= viewport.start + viewport.visible;
+        head.hidden = played.hidden = !visible;
+        if (!visible)
+            return;
+        var x = viewport.left + (current - viewport.start) / viewport.visible * (viewport.right - viewport.left);
+        head.style.left = x + "px";
+        played.style.left = viewport.left + "px";
+        played.style.width = Math.max(0, x - viewport.left) + "px";
+    }
+    function updateWaveformPlaybackPosition() {
+        var viewport = waveformViewport();
+        var current = Number($("#audioPlayer").currentTime) || 0;
+        if (subtitleEditorOpen && waveformZoom > 1 && viewport.duration &&
+            (current < viewport.start || current > viewport.start + viewport.visible * ($("#audioPlayer").paused ? 1 : 0.92))) {
+            waveformViewStart = Math.max(0, Math.min(current - viewport.visible * 0.35, viewport.duration - viewport.visible));
+            renderWaveform(waveformPeaks);
+            return;
+        }
+        updateWaveformPlayheadOverlay();
+    }
     function renderWaveform(peaks) {
         var canvas = $("#waveformCanvas");
         var bounds = canvas.getBoundingClientRect();
@@ -1371,27 +1446,74 @@
         var ctx = canvas.getContext("2d");
         if (!ctx)
             return;
-        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--soft").trim() || "#eef2f7";
+        var viewport = waveformViewport();
+        var left = viewport.left * scale;
+        var right = viewport.right * scale;
+        var top = 10 * scale;
+        var bottom = height - 22 * scale;
+        var center = (top + bottom) / 2;
+        var amp = (bottom - top) / 2;
+        var colors = getComputedStyle(document.documentElement);
+        var muted = colors.getPropertyValue("--muted").trim() || "#64748b";
+        var line = colors.getPropertyValue("--line").trim() || "#cbd5e1";
+        ctx.fillStyle = colors.getPropertyValue("--soft").trim() || "#eef2f7";
         ctx.fillRect(0, 0, width, height);
-        if (!peaks)
-            return;
-        var bins = peaks.length / 2;
-        var amp = height / 2;
-        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--blue").trim() || "#2563eb";
-        ctx.lineWidth = Math.max(1, scale);
-        ctx.beginPath();
-        for (var x = 0; x < width; x++) {
-            var from = Math.floor(x * bins / width);
-            var to = Math.max(from + 1, Math.ceil((x + 1) * bins / width));
-            var min = 0, max = 0;
-            for (var bin = from; bin < to; bin++) {
-                min = Math.min(min, peaks[bin * 2]);
-                max = Math.max(max, peaks[bin * 2 + 1]);
+        ctx.font = 11 * scale + "px ui-monospace, SFMono-Regular, Consolas, monospace";
+        ctx.fillStyle = muted;
+        ctx.strokeStyle = line;
+        ctx.lineWidth = Math.max(1, scale * 0.7);
+        [-1, -0.5, 0, 0.5, 1].forEach(function (value) {
+            var y = center - value * amp;
+            ctx.beginPath();
+            ctx.moveTo(left, y);
+            ctx.lineTo(right, y);
+            ctx.stroke();
+            if (value === -1 || value === 0 || value === 1)
+                ctx.fillText(String(value), 4 * scale, Math.max(11 * scale, Math.min(y + 3 * scale, height - 4 * scale)));
+        });
+        if (viewport.duration && right > left && viewport.visible) {
+            var roughStep = viewport.visible / Math.max(1, (right - left) / (100 * scale));
+            var magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+            var tickStep = [1, 2, 5, 10].map(function (part) { return part * magnitude; }).find(function (step) { return step >= roughStep; }) || 10 * magnitude;
+            for (var second = Math.ceil(viewport.start / tickStep) * tickStep; second <= viewport.start + viewport.visible + tickStep * 0.001; second += tickStep) {
+                var x = left + (second - viewport.start) / viewport.visible * (right - left);
+                ctx.beginPath();
+                ctx.moveTo(x, top);
+                ctx.lineTo(x, bottom);
+                ctx.stroke();
+                var label = waveformTick(second, tickStep);
+                ctx.fillText(label, Math.max(left, Math.min(x - ctx.measureText(label).width / 2, right - ctx.measureText(label).width)), height - 5 * scale);
             }
-            ctx.moveTo(x + 0.5, (1 + min) * amp);
-            ctx.lineTo(x + 0.5, (1 + max) * amp);
         }
-        ctx.stroke();
+        if (peaks && right > left) {
+            var bins = peaks.length / 2;
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(left, top, right - left, bottom - top);
+            ctx.clip();
+            ctx.strokeStyle = colors.getPropertyValue("--blue").trim() || "#2563eb";
+            ctx.lineWidth = Math.max(1, scale);
+            ctx.beginPath();
+            for (var pixel = Math.ceil(left); pixel < right; pixel++) {
+                var ratio = (pixel - left) / (right - left);
+                var nextRatio = (pixel + 1 - left) / (right - left);
+                var from = viewport.duration ? Math.floor((viewport.start + ratio * viewport.visible) / viewport.duration * bins) : Math.floor(ratio * bins);
+                var to = viewport.duration ? Math.ceil((viewport.start + nextRatio * viewport.visible) / viewport.duration * bins) : Math.ceil(nextRatio * bins);
+                from = Math.max(0, Math.min(bins - 1, from));
+                to = Math.max(from + 1, Math.min(bins, to));
+                var min = 0, max = 0;
+                for (var bin = from; bin < to; bin++) {
+                    min = Math.min(min, peaks[bin * 2]);
+                    max = Math.max(max, peaks[bin * 2 + 1]);
+                }
+                ctx.moveTo(pixel + 0.5, center - max * amp);
+                ctx.lineTo(pixel + 0.5, center - min * amp);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+        updateWaveformZoomUI();
+        updateWaveformPlayheadOverlay();
     }
     function readWaveformBytes(file, request) {
         return new Promise(function (resolve, reject) {
@@ -1595,6 +1717,8 @@
         cancelLongWaveform();
         singleFile = file;
         waveformPeaks = null;
+        waveformZoom = 1;
+        waveformViewStart = 0;
         setWaveformState("idle");
         renderWaveform(null);
         updateSubtitleSource();
@@ -2120,10 +2244,52 @@
     $("#audioPlayer").addEventListener("loadedmetadata", function () {
         setCutBounds(0, Math.min(10, getMediaDuration()));
         updateSubtitlePlayback();
+        renderWaveform(waveformPeaks);
     });
     $("#audioPlayer").addEventListener("timeupdate", updateSubtitlePlayback);
     $("#audioPlayer").addEventListener("seeked", updateSubtitlePlayback);
-    $("#audioPlayer").addEventListener("pause", clearPreviewStopTimer);
+    $("#audioPlayer").addEventListener("play", function () {
+        cancelAnimationFrame(waveformPlayheadFrame);
+        var animate = function () {
+            updateWaveformPlaybackPosition();
+            if (!$("#audioPlayer").paused)
+                waveformPlayheadFrame = requestAnimationFrame(animate);
+        };
+        waveformPlayheadFrame = requestAnimationFrame(animate);
+    });
+    $("#audioPlayer").addEventListener("pause", function () {
+        clearPreviewStopTimer();
+        cancelAnimationFrame(waveformPlayheadFrame);
+        updateWaveformPlaybackPosition();
+    });
+    $("#audioPlayer").addEventListener("ended", function () { cancelAnimationFrame(waveformPlayheadFrame); updateWaveformPlaybackPosition(); });
+    $("#waveformCanvas").addEventListener("click", function (event) {
+        var viewport = waveformViewport();
+        if (!viewport.duration || viewport.right <= viewport.left)
+            return;
+        var x = event.clientX - this.getBoundingClientRect().left;
+        var ratio = Math.max(0, Math.min(1, (x - viewport.left) / (viewport.right - viewport.left)));
+        $("#audioPlayer").currentTime = Math.max(0, Math.min(viewport.duration, viewport.start + ratio * viewport.visible));
+        updateSubtitlePlayback();
+    });
+    function changeWaveformZoom(next) {
+        var viewport = waveformViewport();
+        if (!viewport.duration)
+            return;
+        waveformZoom = Math.max(1, Math.min(8, next));
+        var visible = viewport.duration / waveformZoom;
+        var current = Number($("#audioPlayer").currentTime) || 0;
+        waveformViewStart = Math.max(0, Math.min(current - visible / 2, viewport.duration - visible));
+        renderWaveform(waveformPeaks);
+    }
+    $("#waveformZoomOut").addEventListener("click", function () { changeWaveformZoom(waveformZoom / 2); });
+    $("#waveformZoomIn").addEventListener("click", function () { changeWaveformZoom(waveformZoom * 2); });
+    $("#waveformZoomReset").addEventListener("click", function () { changeWaveformZoom(1); });
+    $("#waveformPan").addEventListener("input", function () {
+        var viewport = waveformViewport();
+        waveformViewStart = Math.max(0, viewport.duration - viewport.visible) * Number(this.value) / 1000;
+        renderWaveform(waveformPeaks);
+    });
     $("#usePreviewStart").addEventListener("click", syncStartFromPreview);
     $("#usePreviewEnd").addEventListener("click", syncEndFromPreview);
     $("#previewRange").addEventListener("click", previewRange);
