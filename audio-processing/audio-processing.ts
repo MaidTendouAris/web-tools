@@ -105,9 +105,13 @@
       subtitleEntryHelp: "在独立编辑视图中随音频播放打轴、编写字幕，并导出 LRC/VTT 或带字幕音频。",
       subtitleOpen: "进入字幕编辑器",
       subtitleBack: "← 返回音频处理",
-      subtitleEditorTitle: "字幕编辑器",
-      subtitlePlayerTitle: "音频与打轴",
-      subtitleCueTitle: "字幕行",
+      subtitleEditorTitle: "音频编辑器",
+      subtitlePlayerTitle: "音频播放器与波形",
+      subtitleToolsTitle: "字幕工具",
+      subtitleOverviewTitle: "字幕总览",
+      subtitleCueTitle: "字幕编辑",
+      subtitleSelectCue: "请从左侧字幕总览中选择一行，或先新增字幕行。",
+      subtitleNoText: "（未填写文字）",
       subtitleExportTitle: "导出设置",
       subtitleNoAudio: "请先在工作区选择音频文件，然后进入编辑器打轴。无需音频也可手动编辑并单独导出字幕。",
       subtitleNoSource: "尚未选择音频",
@@ -234,9 +238,13 @@
       subtitleEntryHelp: "Open the dedicated editor to time cues during playback, write subtitles, and export LRC/VTT or audio with subtitles.",
       subtitleOpen: "Open Subtitle Editor",
       subtitleBack: "← Back to Audio Processing",
-      subtitleEditorTitle: "Subtitle Editor",
-      subtitlePlayerTitle: "Audio & Timing",
-      subtitleCueTitle: "Cues",
+      subtitleEditorTitle: "Audio Editor",
+      subtitlePlayerTitle: "Audio Player & Waveform",
+      subtitleToolsTitle: "Subtitle Tools",
+      subtitleOverviewTitle: "Subtitle Overview",
+      subtitleCueTitle: "Edit Subtitle",
+      subtitleSelectCue: "Choose a cue from the overview, or add a new cue first.",
+      subtitleNoText: "(No text yet)",
       subtitleExportTitle: "Export Settings",
       subtitleNoAudio: "Choose audio in the workspace before timing cues. You can still edit and export a subtitle file without audio.",
       subtitleNoSource: "No audio selected",
@@ -302,6 +310,7 @@
   var subtitlePlayerHome = $("#playerBox").parentElement;
   var subtitleNameHome = $("#outputNameField").parentElement;
   var subtitleStatusHome = $("#statusGroup").parentElement;
+  var subtitleResourceHome = $("#resourceCard").parentElement;
   var previewUrl = "";
   var previewStopTimer: number | null = null;
   var lastValidStart = 0;
@@ -444,6 +453,8 @@
     setText("#closeSubtitleEditor", "subtitleBack");
     setText("#subtitleEditorTitle", "subtitleEditorTitle");
     setText("#subtitlePlayerTitle", "subtitlePlayerTitle");
+    setText("#subtitleToolsTitle", "subtitleToolsTitle");
+    setText("#subtitleOverviewTitle", "subtitleOverviewTitle");
     setText("#subtitleCueTitle", "subtitleCueTitle");
     setText("#subtitleExportTitle", "subtitleExportTitle");
     setText("#subtitleNoAudio", "subtitleNoAudio");
@@ -919,6 +930,7 @@
 
   function openSubtitleEditor() {
     if (running || subtitleEditorOpen) return;
+    $("#subtitleResourceMount").appendChild($("#resourceCard"));
     $("#subtitlePlayerMount").appendChild($("#playerBox"));
     $("#subtitleOutputNameMount").appendChild($("#outputNameField"));
     $("#subtitleStatusMount").appendChild($("#statusGroup"));
@@ -933,6 +945,7 @@
 
   function closeSubtitleEditor(showOutput = false) {
     if (running || !subtitleEditorOpen) return;
+    subtitleResourceHome.appendChild($("#resourceCard"));
     subtitlePlayerHome.insertBefore($("#playerBox"), $("#fileBox"));
     subtitleNameHome.insertBefore($("#outputNameField"), $("#panel-convert"));
     subtitleStatusHome.appendChild($("#statusGroup"));
@@ -957,46 +970,83 @@
   function updateSubtitlePlayback() {
     var current = Number($("#audioPlayer").currentTime) || 0;
     $("#subtitleClock").textContent = subtitleTime(current);
-    $$("#subtitleList .subtitle-row").forEach(function (row) {
+    $$("#subtitleOverview .subtitle-overview-item").forEach(function (row) {
       var cue = subtitleCues.find(function (item) { return String(item.id) === row.dataset.cueId; });
       row.classList.toggle("playing", !!cue && current >= cue.start && current < cue.end);
     });
   }
 
+  function updateSubtitleOverviewItem(cue: SubtitleCue) {
+    var item = $$("#subtitleOverview .subtitle-overview-item").find(function (row) { return row.dataset.cueId === String(cue.id); });
+    if (!item) return;
+    item.querySelector(".subtitle-overview-time").textContent = (Number.isFinite(cue.start) ? subtitleTime(cue.start) : "—") + " – " + (Number.isFinite(cue.end) ? subtitleTime(cue.end) : "—");
+    item.querySelector(".subtitle-overview-text").textContent = cue.text.trim().replace(/\s+/g, " ") || t("subtitleNoText");
+  }
+
   function renderSubtitleCues() {
-    var list = $("#subtitleList");
+    var list = $("#subtitleOverview");
+    var editor = $("#subtitleCueEditor");
     list.replaceChildren();
+    editor.replaceChildren();
     updateSubtitleDraftStatus();
     if (!subtitleCues.length) {
       var empty = document.createElement("p");
       empty.className = "subtitle-help";
       empty.textContent = t("subtitleEmpty");
       list.appendChild(empty);
+      var selectPrompt = document.createElement("p");
+      selectPrompt.className = "subtitle-help";
+      selectPrompt.textContent = t("subtitleSelectCue");
+      editor.appendChild(selectPrompt);
       return;
     }
     subtitleCues.forEach(function (cue, index) {
-      var row = document.createElement("div");
-      row.className = "subtitle-row" + (cue.id === selectedSubtitleId ? " selected" : "");
+      var row = document.createElement("button");
+      row.className = "subtitle-overview-item" + (cue.id === selectedSubtitleId ? " selected" : "");
+      row.type = "button";
+      row.setAttribute("aria-pressed", String(cue.id === selectedSubtitleId));
       row.dataset.cueId = String(cue.id);
       row.addEventListener("click", function () {
         selectedSubtitleId = cue.id;
-        $$("#subtitleList .subtitle-row").forEach(function (item) { item.classList.toggle("selected", item === row); });
+        renderSubtitleCues();
+        var active = $$("#subtitleOverview .subtitle-overview-item").find(function (item) { return item.dataset.cueId === String(cue.id); });
+        active?.focus({ preventScroll: true });
       });
-      var head = document.createElement("div");
-      head.className = "subtitle-row-head";
       var title = document.createElement("strong");
       title.textContent = t("subtitleLine").replace("{number}", String(index + 1));
+      var time = document.createElement("span");
+      time.className = "subtitle-overview-time";
+      var text = document.createElement("span");
+      text.className = "subtitle-overview-text";
+      row.append(title, time, text);
+      list.appendChild(row);
+      updateSubtitleOverviewItem(cue);
+    });
+    var selected = selectedSubtitleCue();
+    if (!selected) {
+      var prompt = document.createElement("p");
+      prompt.className = "subtitle-help";
+      prompt.textContent = t("subtitleSelectCue");
+      editor.appendChild(prompt);
+    } else {
+      var selectedIndex = subtitleCues.indexOf(selected);
+      var detail = document.createElement("div");
+      detail.className = "subtitle-cue-editor";
+      var head = document.createElement("div");
+      head.className = "subtitle-cue-editor-head";
+      var title = document.createElement("strong");
+      title.textContent = t("subtitleLine").replace("{number}", String(selectedIndex + 1));
       var remove = document.createElement("button");
       remove.className = "btn";
       remove.type = "button";
       remove.textContent = t("subtitleDelete");
       remove.addEventListener("click", function () {
-        subtitleCues = subtitleCues.filter(function (item) { return item !== cue; });
-        if (selectedSubtitleId === cue.id) selectedSubtitleId = subtitleCues[0]?.id || null;
+        subtitleCues = subtitleCues.filter(function (item) { return item !== selected; });
+        selectedSubtitleId = subtitleCues[0]?.id || null;
         renderSubtitleCues();
       });
       head.append(title, remove);
-      row.appendChild(head);
+      detail.appendChild(head);
       var times = document.createElement("div");
       times.className = "subtitle-times";
       (["start", "end"] as const).forEach(function (kind) {
@@ -1007,29 +1057,34 @@
         input.type = "number";
         input.min = "0";
         input.step = "0.001";
-        input.value = Number.isFinite(cue[kind]) ? cue[kind].toFixed(3) : "";
+        input.value = Number.isFinite(selected[kind]) ? selected[kind].toFixed(3) : "";
         input.dataset.time = kind;
-        input.addEventListener("input", function () { cue[kind] = input.value === "" ? NaN : Number(input.value); updateSubtitlePlayback(); });
+        input.addEventListener("input", function () {
+          selected[kind] = input.value === "" ? NaN : Number(input.value);
+          updateSubtitleOverviewItem(selected);
+          updateSubtitlePlayback();
+        });
         input.addEventListener("change", function () {
-          if (Number.isFinite(cue[kind])) {
-            cue[kind] = roundSubtitleTime(cue[kind]);
-            input.value = cue[kind].toFixed(3);
+          if (Number.isFinite(selected[kind])) {
+            selected[kind] = roundSubtitleTime(selected[kind]);
+            input.value = selected[kind].toFixed(3);
+            updateSubtitleOverviewItem(selected);
           }
         });
         label.append(span, input);
         times.appendChild(label);
       });
-      row.appendChild(times);
+      detail.appendChild(times);
       var label = document.createElement("label");
       var labelText = document.createElement("span");
       labelText.textContent = t("subtitleText");
       var textarea = document.createElement("textarea");
-      textarea.value = cue.text;
-      textarea.addEventListener("input", function () { cue.text = textarea.value; });
+      textarea.value = selected.text;
+      textarea.addEventListener("input", function () { selected.text = textarea.value; updateSubtitleOverviewItem(selected); });
       label.append(labelText, textarea);
-      row.appendChild(label);
-      list.appendChild(row);
-    });
+      detail.appendChild(label);
+      editor.appendChild(detail);
+    }
     updateSubtitlePlayback();
   }
 
@@ -1042,7 +1097,7 @@
     subtitleCues.push(cue);
     selectedSubtitleId = cue.id;
     renderSubtitleCues();
-    var textarea = $("#subtitleList .subtitle-row.selected textarea");
+    var textarea = $("#subtitleCueEditor textarea");
     if (textarea && focusText) textarea.focus();
   }
 
