@@ -1434,9 +1434,11 @@
     }
     function updateWaveformPlaybackPosition() {
         var viewport = waveformViewport();
-        var current = Number($("#audioPlayer").currentTime) || 0;
-        if (subtitleEditorOpen && waveformZoom > 1 && viewport.duration &&
-            (current < viewport.start || current > viewport.start + viewport.visible * ($("#audioPlayer").paused ? 1 : 0.92))) {
+        var player = $("#audioPlayer");
+        var current = Number(player.currentTime) || 0;
+        // A delayed seek/timeupdate must not undo the user's manual pan while paused.
+        if (subtitleEditorOpen && !player.paused && waveformZoom > 1 && viewport.duration &&
+            (current < viewport.start || current > viewport.start + viewport.visible * 0.92)) {
             waveformViewStart = Math.max(0, Math.min(current - viewport.visible * 0.35, viewport.duration - viewport.visible));
             renderWaveform(waveformPeaks);
             return;

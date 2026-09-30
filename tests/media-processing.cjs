@@ -111,6 +111,8 @@ const server = http.createServer((req,res)=>{
  if(Math.abs(seekTime-zoomDuration*.375)>.1)throw Error('Zoomed waveform click did not seek to the visible timeline');
  await page.waitForFunction(()=>{const head=document.querySelector('#waveformPlayhead');return !head.hidden&&parseFloat(head.style.left)>0;});
  await page.locator('#waveformPan').evaluate(input=>{input.value='1000';input.dispatchEvent(new Event('input',{bubbles:true}));});
+ await page.locator('#audioPlayer').evaluate(audio=>audio.dispatchEvent(new Event('timeupdate')));
+ if(await page.locator('#waveformPan').inputValue()!=='1000')throw Error('Paused playback event reset the manually panned waveform');
  await page.locator('#waveformCanvas').click({position:{x:36,y:50}});
  const panSeekTime=await page.locator('#audioPlayer').evaluate(audio=>audio.currentTime);
  if(Math.abs(panSeekTime-zoomDuration/2)>.1)throw Error('Waveform pan did not move the visible timeline');
