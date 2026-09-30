@@ -22,6 +22,8 @@
   <style>
     .player-box { display: none; margin-top: 14px; }
     .player-box.show { display: grid; gap: 10px; }
+    .audio-downloads { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .audio-downloads .wt-output-clear { margin-left: 0; }
     audio { width: 100%; }
     canvas { display: block; width: 100%; height: 120px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); cursor: crosshair; }
     .waveform-shell { position: relative; min-width: 0; }
@@ -129,7 +131,7 @@
     <nav class="topbar" aria-label="页面导航" id="navLabel">
       <a class="home" href="../index.html">‹ <span id="homeLink">工具集</span></a>
       <div class="controls wt-top-actions">
-        <span class="version-badge">V1.2.8</span>
+        <span class="version-badge">V1.2.9</span>
         <div class="language" aria-label="Language">
           <button class="active" type="button" data-lang="zh">中文</button>
           <button type="button" data-lang="en">EN</button>
@@ -342,7 +344,7 @@
       <div class="subtitle-editor-topbar">
         <button class="btn" id="closeSubtitleEditor" type="button">← 返回音频处理</button>
         <div class="subtitle-editor-top-actions">
-          <span class="version-badge">V1.2.8</span>
+          <span class="version-badge">V1.2.9</span>
           <div class="subtitle-language" aria-label="Language">
             <button class="active" type="button" data-lang="zh">中文</button>
             <button type="button" data-lang="en">EN</button>

@@ -53,11 +53,19 @@ const server = http.createServer((req,res)=>{
   const mode=await engine.input('copy.mp4',new File([blob],'copy.mp4'));
   const probe=JSON.parse(await engine.probe(['-v','quiet','-print_format','json','-show_format','-show_streams','copy.mp4']));
   window.fixture=blob;
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=32;
+  canvas.getContext('2d').fillRect(0,0,32,32);
+  const cover=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+  await engine.input('cover.png',new File([cover],'cover.png'));
+  await engine.exec(['-f','lavfi','-i','sine=frequency=440:sample_rate=44100','-i','cover.png','-t','2','-ac','2','-map','0:a','-map','1:v','-c:a','libmp3lame','-b:a','192k','-c:v','copy','-disposition:v','attached_pic','-metadata','title=中文标题','-id3v2_version','3','stereo.mp3'],1);
+  const stereo=await engine.blob('stereo.mp3','audio/mpeg');
   engine.terminate();
-  return {bytes:Array.from(new Uint8Array(await blob.arrayBuffer())),size:blob.size,mode,duration:probe.format.duration,progress:progress.slice(0,6)};
+  return {bytes:Array.from(new Uint8Array(await blob.arrayBuffer())),stereoBytes:Array.from(new Uint8Array(await stereo.arrayBuffer())),size:blob.size,mode,duration:probe.format.duration,progress:progress.slice(0,6)};
  });
  fs.writeFileSync(artifact('test.mp4'),Buffer.from(fixture.bytes));
+ fs.writeFileSync(artifact('stereo.mp3'),Buffer.from(fixture.stereoBytes));
  delete fixture.bytes;
+ delete fixture.stereoBytes;
  console.log('REAL CORE',JSON.stringify(fixture));
  const samples=44100*12, wav=Buffer.alloc(44+samples*2);
  wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(44100,24);wav.writeUInt32LE(88200,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(samples*2,40);
@@ -68,8 +76,8 @@ const server = http.createServer((req,res)=>{
   await page.waitForFunction(()=>['done','failed','cancelled'].includes(document.querySelector('#processingProgress').dataset.state),null,{timeout:60000});
   const result=await page.evaluate(()=>({state:document.querySelector('#processingProgress').dataset.state,text:document.querySelector('#processingProgress').innerText,result:document.querySelector('#resultBox').innerText,log:document.querySelector('#logBox').innerText.slice(-1400)}));
   console.log(action,result.state,result.result.slice(0,90));
-  if(result.state!=='done')throw Error(action+' failed');
-  const link=page.locator('#resultBox a');
+  if(result.state!=='done')throw Error(action+' failed: '+JSON.stringify(result));
+  const link=page.locator('#resultBox a').first();
   if(await link.count()){
    const bytes=await link.evaluate(async a=>Array.from(new Uint8Array(await(await fetch(a.href)).arrayBuffer())));
    const name = await link.getAttribute('download');
@@ -80,6 +88,7 @@ const server = http.createServer((req,res)=>{
     if (Object.keys(zip.files).length !== 2) throw Error('Wrong ZIP entry count');
    }
    fs.writeFileSync(artifact('output-' + action + name.replace(/[^\w.-]/g,'_')), data);
+   return {name,data};
   }
  }
  await page.locator('#fileInput').setInputFiles(artifact('test.wav'));
@@ -184,31 +193,40 @@ const server = http.createServer((req,res)=>{
  await page.locator('#subtitleAudioFormat').selectOption('mp3');
  if(!await page.locator('#subtitleExportHelp').innerText().then(text=>text.includes('ID3')))throw Error('MP3 synchronized lyrics guidance missing');
  await run('subtitle');
- const mp3Name=await page.locator('#resultBox a').getAttribute('download');
+ const mp3Name=await page.locator('#resultBox a').first().getAttribute('download');
  if(!mp3Name.endsWith('.mp3'))throw Error('Selected MP3 embedded audio format incorrect');
  const mp3Bytes=fs.readFileSync(artifact('output-subtitle'+mp3Name.replace(/[^\w.-]/g,'_')));
  const synchsafe=(bytes,offset)=>((bytes[offset]&127)<<21)|((bytes[offset+1]&127)<<14)|((bytes[offset+2]&127)<<7)|(bytes[offset+3]&127);
- if(mp3Bytes.toString('ascii',0,3)!=='ID3'||mp3Bytes[3]!==4)throw Error('MP3 ID3v2.4 tag missing');
+ if(mp3Bytes.toString('ascii',0,3)!=='ID3'||mp3Bytes[3]!==3)throw Error('MP3 ID3v2.3 tag missing');
  const tagEnd=10+synchsafe(mp3Bytes,6);
  let sylt=null,uslt=null;
  for(let offset=10;offset+10<=tagEnd;){
   const id=mp3Bytes.toString('ascii',offset,offset+4);
   if(!/^[A-Z0-9]{4}$/.test(id))break;
-  const end=offset+10+synchsafe(mp3Bytes,offset+4);
+  const end=offset+10+mp3Bytes.readUInt32BE(offset+4);
   if(end>tagEnd)throw Error('Malformed MP3 ID3 frame');
   if(id==='SYLT')sylt=mp3Bytes.subarray(offset+10,end);
   if(id==='USLT')uslt=mp3Bytes.subarray(offset+10,end);
   offset=end;
  }
- if(!sylt||!uslt||sylt[0]!==3||sylt[4]!==2||sylt[5]!==1||!uslt.includes(Buffer.from('中文歌词')))throw Error('MP3 synchronized/fallback lyric frames missing');
+ if(!sylt||!uslt||sylt[0]!==1||sylt.toString('ascii',1,4)!=='und'||sylt[4]!==2||sylt[5]!==1||!uslt.includes(Buffer.from('[00:01.000]中文歌词','utf16le')))throw Error('MP3 synchronized/fallback lyric frames missing');
+ function unicodeEnd(bytes,offset){for(let i=offset;i+1<bytes.length;i+=2)if(bytes.readUInt16LE(i)===0)return i;throw Error('Unterminated ID3 Unicode string');}
  const lyricEvents=[];
- for(let offset=7;offset<sylt.length;){const end=sylt.indexOf(0,offset);if(end<0||end+5>sylt.length)throw Error('Malformed MP3 lyric entry');lyricEvents.push({text:sylt.toString('utf8',offset,end),time:sylt.readUInt32BE(end+1)});offset=end+5;}
+ for(let offset=unicodeEnd(sylt,6)+2;offset<sylt.length;){const end=unicodeEnd(sylt,offset);if(end+6>sylt.length||sylt.readUInt16LE(offset)!==0xfeff)throw Error('Malformed MP3 lyric entry');lyricEvents.push({text:sylt.toString('utf16le',offset+2,end),time:sylt.readUInt32BE(end+2)});offset=end+6;}
  if(lyricEvents.length!==2||lyricEvents[0].text!=='中文歌词'||lyricEvents[0].time!==1000||lyricEvents[1].text!==''||lyricEvents[1].time!==2500)throw Error('MP3 synchronized lyric millisecond timing incorrect');
+ const companionNames=await page.locator('#resultBox a').evaluateAll(links=>links.map(link=>link.download));
+ if(companionNames.join(',')!==[mp3Name,mp3Name.replace(/\.mp3$/,'.lrc'),mp3Name.replace(/\.mp3$/,'.vtt')].join(','))throw Error('MP3 companion subtitle basenames differ');
+ const companions=await page.locator('#resultBox a').evaluateAll(async links=>Promise.all(links.slice(1).map(async link=>await(await fetch(link.href)).text())));
+ if(!companions[0].includes('[00:01.000]中文歌词')||!companions[1].includes('00:00:01.000 --> 00:00:02.500\n中文歌词'))throw Error('MP3 companion subtitle contents incorrect');
+ const outputUrls=await page.locator('#resultBox a').evaluateAll(links=>links.map(link=>link.href));
+ await page.locator('#resultBox .wt-output-clear').click();
+ if(await page.locator('#resultBox a').count()||!await page.evaluate(async urls=>(await Promise.all(urls.map(async url=>{try{await fetch(url);return false;}catch{return true;}}))).every(Boolean),outputUrls))throw Error('MP3 companion URLs not released on clear');
  await page.locator('#fileInput').setInputFiles(artifact('output-subtitle'+mp3Name.replace(/[^\w.-]/g,'_')));
  await page.locator('[data-tool="metadata"]').click();
  await run('read-metadata');
  const mp3Probe=JSON.parse(await page.locator('#resultBox pre').innerText());
  if(!mp3Probe.streams.some(stream=>stream.codec_type==='audio'&&stream.codec_name==='mp3'))throw Error('MP3 audio stream missing after lyrics embedding');
+ if(!Object.values(mp3Probe.format.tags||{}).some(value=>String(value).includes('[00:01.000]中文歌词')))throw Error('FFprobe could not read fallback MP3 lyrics');
  const longSamples=8000*310,longWav=Buffer.alloc(44+longSamples*2);
  longWav.write('RIFF');longWav.writeUInt32LE(longWav.length-8,4);longWav.write('WAVEfmt ',8);longWav.writeUInt32LE(16,16);longWav.writeUInt16LE(1,20);longWav.writeUInt16LE(1,22);longWav.writeUInt32LE(8000,24);longWav.writeUInt32LE(16000,28);longWav.writeUInt16LE(2,32);longWav.writeUInt16LE(16,34);longWav.write('data',36);longWav.writeUInt32LE(longSamples*2,40);
  for(let i=0;i<longSamples;i++)longWav.writeInt16LE(Math.round(12000*Math.sin(i*2*Math.PI*440/8000)),44+i*2);
@@ -251,7 +269,81 @@ const server = http.createServer((req,res)=>{
  await run('cut');
  await page.locator('[data-tool="volume"]').click();
  await run('volume');
+
+ // Exercise every exposed audio format with stereo MP3 input; checking success alone
+ // misses MP3-encoded data accidentally stored inside a WAV container.
+ await page.locator('#fileInput').setInputFiles(artifact('stereo.mp3'));
+ const codecs={mp3:'mp3',aac:'aac',m4a:'aac',ogg:'vorbis',wav:'pcm_s16le',flac:'flac',opus:'opus'};
+ async function inspectAudio(output,checks={}){
+  const outputPath=artifact('inspect-'+output.name.replace(/[^\w.-]/g,'_'));
+  fs.writeFileSync(outputPath,output.data);
+  await page.locator('#fileInput').setInputFiles(outputPath);
+  await page.locator('[data-tool="metadata"]').click();
+  await run('read-metadata');
+  const probe=JSON.parse(await page.locator('#resultBox pre').innerText());
+  const stream=probe.streams.find(stream=>stream.codec_type==='audio');
+  if(!stream||stream.codec_name!==checks.codec||stream.channels!==2)throw Error('Unexpected audio stream: '+output.name+' '+JSON.stringify(stream));
+  if(checks.subtitle&&!probe.streams.some(stream=>stream.codec_type==='subtitle'&&stream.codec_name===checks.subtitle))throw Error('Missing embedded subtitle: '+output.name);
+  await page.locator('#fileInput').setInputFiles(artifact('stereo.mp3'));
+  return probe;
+ }
+ for(const action of ['convert','cut','remux','volume','speed']){
+  await page.locator('[data-tool="'+action+'"]').click();
+  const selector='#'+action+'Format';
+  const formats=await page.locator(selector+' option').evaluateAll(options=>options.map(option=>option.value));
+  for(const format of formats){
+   await page.locator('[data-tool="'+action+'"]').click();
+   await page.locator(selector).selectOption(format);
+   if(action==='cut'){
+    await page.locator('#cutStart').fill('0.25');await page.locator('#cutEnd').fill('1.75');await page.locator('#cutEnd').dispatchEvent('change');
+   }
+   const output=await run(action);
+   await inspectAudio(output,{codec:codecs[format]});
+   console.log('STEREO EXPORT',action,format,'OK');
+  }
+ }
+ // Stereo subtitles reproduce the libopus trap even with a two-second source.
+ await page.locator('[data-tool="subtitle"]').click();
+ await page.locator('#openSubtitleEditor').click();
+ fs.writeFileSync(artifact('stereo.vtt'),'WEBVTT\n\n00:00:00.123 --> 00:00:01.789\n立体声歌词 🎵\n');
+ await page.locator('#subtitleImport').setInputFiles(artifact('stereo.vtt'));
+ await page.waitForFunction(()=>document.querySelector('#subtitleCueEditor textarea')?.value==='立体声歌词 🎵');
+ for(const format of ['mkv','m4a','mp3']){
+  if(!await page.locator('#subtitleEditorView').isVisible()){
+   await page.locator('[data-tool="subtitle"]').click();await page.locator('#openSubtitleEditor').click();
+  }
+  await page.locator('#subtitleAudioFormat').selectOption(format);
+  const output=await run('subtitle');
+  const probe=await inspectAudio(output,{codec:format==='mkv'?'opus':format==='m4a'?'aac':'mp3',subtitle:format==='mkv'?'subrip':format==='m4a'?'mov_text':undefined});
+  if(format==='mp3'){
+   if(probe.format.tags.title!=='中文标题'||!probe.streams.some(stream=>stream.codec_type==='video'&&stream.disposition.attached_pic))throw Error('MP3 metadata/artwork lost during lyrics embedding');
+   if(!Object.values(probe.format.tags).some(value=>String(value).includes('[00:00.123]立体声歌词 🎵')))throw Error('Unicode timed MP3 lyrics missing');
+   const hashes=await page.evaluate(async outputBytes=>{
+    const engine=WebToolsMediaEngine.create({log:()=>{},progress:()=>{}});
+    try{
+     await engine.load(await(await fetch('/__fixtures/ffmpeg-core.js')).arrayBuffer(),await(await fetch('/__fixtures/ffmpeg-core.wasm')).arrayBuffer());
+     await engine.input('source.mp3',new File([await(await fetch('/__fixtures/stereo.mp3')).blob()],'source.mp3'));
+     await engine.input('export.mp3',new File([new Uint8Array(outputBytes)],'export.mp3'));
+     const hashes=[];
+     for(const name of ['source.mp3','export.mp3'])hashes.push(JSON.parse(await engine.probe(['-v','quiet','-print_format','json','-select_streams','a:0','-show_packets','-show_data_hash','sha256','-show_entries','packet=data_hash',name])).packets.map(packet=>packet.data_hash));
+     return hashes;
+    }finally{engine.terminate();}
+   },Array.from(output.data));
+   if(hashes[0].join(',')!==hashes[1].join(','))throw Error('MP3 subtitle export re-encoded the source audio');
+  }
+  console.log('STEREO SUBTITLES',format,'OK');
+ }
+ // Leading '-' in a source name must remain a filename, not an option.
+ await page.locator('#fileInput').setInputFiles({name:'-歌曲.mp3',mimeType:'audio/mpeg',buffer:fs.readFileSync(artifact('stereo.mp3'))});
+ await page.locator('[data-tool="volume"]').click();await page.locator('#volumeFormat').selectOption('mp3');
+ const leadingName=await run('volume');if(leadingName.name!=='-歌曲.gain.mp3')throw Error('Source filename changed');
+ await page.locator('#outputBaseName').fill('-自定义');
+ await page.locator('[data-action="volume"]').click();
+ if(await page.locator('#outputBaseName').evaluate(input=>input.validity.valid))throw Error('Reserved custom filename was accepted');
+ await page.locator('#outputBaseName').fill('');
+ await page.locator('#fileInput').setInputFiles(artifact('test.wav'));
  await page.locator('[data-tool="convert"]').click();
+ await page.locator('#convertFormat').selectOption('mp3');
  await page.locator('#fileInput').setInputFiles([artifact('test.wav'),artifact('test.wav')]);
  await page.locator('#outputBaseName').fill('batch');
  await run('convert');
@@ -263,6 +355,7 @@ const server = http.createServer((req,res)=>{
  await page.locator('[data-tool="remux"]').click();
  await run('remux');
  await page.locator('[data-tool="speed"]').click();
+ await page.locator('#speedFormat').selectOption('mp3');
  await run('speed');
  await page.locator('#speedArgs').fill('-bad-option');
  await page.locator('[data-action="speed"]').click();

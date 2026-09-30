@@ -134,7 +134,8 @@
       subtitlePreviewEmpty: "当前没有字幕",
       subtitleAudioFormat: "内嵌音频格式",
       subtitleAudioMp3: "MP3 · ID3 同步歌词",
-      subtitleMp3ExportHelp: "MP3 使用 ID3 同步歌词保存时间轴；是否显示歌词取决于播放器。",
+      subtitleMp3ExportHelp: "MP3 写入 ID3 同步歌词，并提供同名 LRC/VTT 下载。VLC 3 不显示内嵌歌词，请将外部字幕与音频放在同一文件夹，或选择 MKV 字幕轨。",
+      audioEngineError: "音频编码器发生运行异常，请检查日志，调整编码参数或更换输出格式后重试。",
       subtitleInvalidAudioFormat: "不支持该内嵌音频格式。",
       subtitleExportTitle: "导出设置",
       subtitleNoAudio: "请先在工作区选择音频文件，然后进入编辑器打轴。无需音频也可手动编辑并单独导出字幕。",
@@ -290,7 +291,8 @@
       subtitlePreviewEmpty: "No subtitle at this time",
       subtitleAudioFormat: "Embedded audio format",
       subtitleAudioMp3: "MP3 · ID3 timed lyrics",
-      subtitleMp3ExportHelp: "MP3 stores cue timing as ID3 synchronized lyrics. Whether lyrics appear depends on the player.",
+      subtitleMp3ExportHelp: "MP3 stores ID3 timed lyrics and offers matching LRC/VTT downloads. VLC 3 does not display embedded lyrics: keep external subtitles beside the audio, or choose MKV for a subtitle track.",
+      audioEngineError: "The audio encoder encountered a runtime error. Check the log, adjust encoding settings or choose another output format, then retry.",
       subtitleInvalidAudioFormat: "Unsupported embedded audio format.",
       subtitleExportTitle: "Export Settings",
       subtitleNoAudio: "Choose audio in the workspace before timing cues. You can still edit and export a subtitle file without audio.",
@@ -371,7 +373,7 @@
   var cancelled = false;
   var activeAction = "";
   var customOutputBase: string | null = null;
-  var downloadUrl = "";
+  var downloadUrls: string[] = [];
   var logTimer = 0;
   var workerClient: any = null;
   var progressUI = (window as any).WebToolsControls.createProgress($("#processingProgress"), function () {
@@ -386,7 +388,7 @@
   }
   window.addEventListener("pagehide", function () {
     if (workerClient) workerClient.terminate();
-    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    releaseDownloads();
   });
 
   function t(key: string): string {
@@ -591,7 +593,7 @@
   }
 
   function fileName(sourceName: string, suffix: string) {
-    return customOutputBase ? customOutputBase + "." + suffix.split(".").pop() : sourceName.replace(/\.[^.]+$/, "") + "." + suffix;
+    return safeZipName(customOutputBase ? customOutputBase + "." + suffix.split(".").pop() : sourceName.replace(/\.[^.]+$/, "") + "." + suffix);
   }
 
   function safeZipName(name: string) {
@@ -732,7 +734,7 @@
       m4a: "-vn -c:a aac -b:a 192k",
       wav: "-vn -c:a pcm_s16le",
       flac: "-vn -c:a flac",
-      opus: "-vn -c:a libopus -b:a 128k"
+      opus: "-vn -c:a libopus -b:a 128k -frame_duration 10"
     };
     return args[format] || "-vn";
   }
@@ -792,8 +794,7 @@
   }
 
   function clearRunOutput() {
-    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-    downloadUrl = "";
+    releaseDownloads();
     logLines = [];
     clearTimeout(logTimer);
     logTimer = 0;
@@ -1261,14 +1262,20 @@
   function id3Frame(name: string, body: Blob) {
     var header = new Uint8Array(10);
     for (var index = 0; index < 4; index++) header[index] = name.charCodeAt(index);
-    header.set(id3Synchsafe(body.size), 4);
+    // ID3v2.3 frame lengths are ordinary big-endian integers, unlike the tag length.
+    new DataView(header.buffer).setUint32(4, body.size, false);
     return new Blob([header, body]);
   }
 
-  async function embedMp3Lyrics(mp3: Blob, cues: Array<{ start: number; end: number; text: string }>) {
-    // ID3v2.4 SYLT stores UTF-8 lyric events with absolute millisecond timestamps.
-    // https://id3.org/id3v2.4.0-frames and https://id3.org/id3v2.4.0-structure
-    var encoder = new TextEncoder();
+  function id3Unicode(text: string, terminated = true) {
+    var bytes = new Uint8Array(2 + text.length * 2 + (terminated ? 2 : 0));
+    var view = new DataView(bytes.buffer);
+    view.setUint16(0, 0xfeff, true);
+    for (var index = 0; index < text.length; index++) view.setUint16(2 + index * 2, text.charCodeAt(index), true);
+    return bytes;
+  }
+
+  function subtitleLyricEvents(cues: Array<{ start: number; end: number; text: string }>) {
     var boundaries = Array.from(new Set(cues.flatMap(function (cue) { return [Math.round(cue.start * 1000), Math.round(cue.end * 1000)]; }))).sort(function (a, b) { return a - b; });
     var events: Array<{ time: number; text: string }> = [];
     var previousText = "";
@@ -1278,25 +1285,33 @@
       if (text !== previousText) events.push({ time: time, text: text });
       previousText = text;
     });
-    var syltParts: BlobPart[] = [Uint8Array.of(3, 88, 88, 88, 2, 1, 0)];
+    return events;
+  }
+
+  async function embedMp3Lyrics(mp3: Blob, cues: Array<{ start: number; end: number; text: string }>) {
+    // ID3v2.3 UTF-16 has wider legacy-player support. SYLT timestamps use milliseconds.
+    // https://id3.org/id3v2.3.0
+    var events = subtitleLyricEvents(cues);
+    var syltParts: BlobPart[] = [Uint8Array.of(1, 117, 110, 100, 2, 1), id3Unicode("")];
     events.forEach(function (event) {
       if (event.time > 0xffffffff) throw new Error(t("subtitleInvalidTime").replace("{number}", "1"));
-      var textBytes = encoder.encode(event.text);
-      var entry = new Uint8Array(textBytes.length + 5);
+      var textBytes = id3Unicode(event.text);
+      var entry = new Uint8Array(textBytes.length + 4);
       entry.set(textBytes);
-      new DataView(entry.buffer).setUint32(textBytes.length + 1, event.time, false);
+      new DataView(entry.buffer).setUint32(textBytes.length, event.time, false);
       syltParts.push(entry);
     });
-    var lyrics = cues.map(function (cue) { return cue.text; }).join("\n");
+    // Players that only read USLT can still recognize its embedded LRC timestamps.
+    var lyrics = events.map(function (event) { return "[" + subtitleTime(event.time / 1000, true) + "]" + event.text.replace(/\n/g, " / "); }).join("\n");
     var lyricFrames: Blob[] = [
       id3Frame("SYLT", new Blob(syltParts)),
-      id3Frame("USLT", new Blob([Uint8Array.of(3, 88, 88, 88, 0), encoder.encode(lyrics)]))
+      id3Frame("USLT", new Blob([Uint8Array.of(1, 117, 110, 100), id3Unicode(""), id3Unicode(lyrics, false)]))
     ];
     var existingFrames: Blob[] = [];
     var audioOffset = 0;
     var header = new Uint8Array(await mp3.slice(0, 10).arrayBuffer());
     if (header.length === 10 && header[0] === 73 && header[1] === 68 && header[2] === 51) {
-      if (header[3] !== 4 || header[5] !== 0) throw new Error(t("subtitleInvalidAudioFormat"));
+      if (header[3] !== 3 || header[5] !== 0) throw new Error(t("subtitleInvalidAudioFormat"));
       var tagSize = readId3Synchsafe(header, 6);
       audioOffset = 10 + tagSize;
       if (audioOffset > mp3.size) throw new Error(t("subtitleInvalidAudioFormat"));
@@ -1305,7 +1320,7 @@
         if (data[position] === 0) break;
         var name = String.fromCharCode(data[position], data[position + 1], data[position + 2], data[position + 3]);
         if (!/^[A-Z0-9]{4}$/.test(name)) throw new Error(t("subtitleInvalidAudioFormat"));
-        var size = readId3Synchsafe(data, position + 4);
+        var size = new DataView(data.buffer).getUint32(position + 4, false);
         var end = position + 10 + size;
         if (!size || end > data.length) throw new Error(t("subtitleInvalidAudioFormat"));
         if (name !== "SYLT" && name !== "USLT") existingFrames.push(new Blob([data.slice(position, end)]));
@@ -1315,7 +1330,7 @@
     var frames = existingFrames.concat(lyricFrames);
     var size = frames.reduce(function (total, frame) { return total + frame.size; }, 0);
     var tag = new Uint8Array(10);
-    tag.set([73, 68, 51, 4, 0, 0]);
+    tag.set([73, 68, 51, 3, 0, 0]);
     tag.set(id3Synchsafe(size), 6);
     checkCancelled();
     return new Blob([tag, ...frames, mp3.slice(audioOffset)], { type: MIME.mp3 });
@@ -1824,23 +1839,39 @@
     return await core.blob(path, MIME[ext] || "application/octet-stream");
   }
 
-  function showDownload(blob: Blob, name: string) {
+  function releaseDownloads() {
+    downloadUrls.forEach(function (url) { URL.revokeObjectURL(url); });
+    downloadUrls = [];
+  }
+
+  function showDownload(blob: Blob, name: string, companions: Array<{ blob: Blob; name: string }> = []) {
     checkCancelled();
-    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-    var url = downloadUrl = URL.createObjectURL(blob);
+    releaseDownloads();
     var box = $("#resultBox");
     box.dataset.hasOutput = "true";
     box.innerHTML = "";
-    var link = document.createElement("a");
-    link.href = url;
-    link.download = name;
-    link.textContent = t("download") + " " + name;
-    box.appendChild(link);
-    (window as any).WebToolsControls.addOutputClear(box, () => {
-      URL.revokeObjectURL(downloadUrl); downloadUrl = "";
+    var actions = document.createElement("div");
+    actions.className = "audio-downloads";
+    box.appendChild(actions);
+    [{ blob: blob, name: name }].concat(companions).forEach(function (file) {
+      var link = document.createElement("a");
+      link.href = URL.createObjectURL(file.blob);
+      downloadUrls.push(link.href);
+      link.download = file.name;
+      link.textContent = t("download") + " " + file.name;
+      actions.appendChild(link);
+    });
+    (window as any).WebToolsControls.addOutputClear(actions, () => {
+      releaseDownloads();
       box.textContent = t("noOutput"); box.dataset.hasOutput = "";
       $("#summary").replaceChildren();
     });
+    if (companions.length) {
+      var help = document.createElement("p");
+      help.className = "subtitle-help";
+      help.textContent = t("subtitleMp3ExportHelp");
+      box.appendChild(help);
+    }
   }
 
   function showSummary(items: Array<{ label: string; value: string }>) {
@@ -1871,6 +1902,12 @@
     checkCancelled();
     setStatus("running");
     progressUI.stage("processing");
+    args = args.slice();
+    // The 0.12.10 core traps when libopus uses its default 20 ms stereo frames.
+    // Keep stereo and use 10 ms unless the user explicitly supplies a frame duration.
+    if (args.includes("libopus") && !args.includes("-frame_duration")) args.splice(args.length - 1, 0, "-frame_duration", "10");
+    // An output basename starting with '-' must not be parsed as a command option.
+    args[args.length - 1] = "/" + args[args.length - 1];
     appendLog("$ ffmpeg " + args.join(" "));
     var scale: number | null = activeAction === "speed" ? readSpeedFactor() : 1;
     // User timestamp filters can make duration estimates unreliable.
@@ -2077,14 +2114,30 @@
     $("#statusLine").textContent = t("subtitleEmbedding");
     var subtitlePath = "__wt_subtitles.vtt";
     if (audioFormat !== "mp3") await prepared.core.FS.writeFile(subtitlePath, new TextEncoder().encode(subtitleVtt(cues)));
-    var args = audioFormat === "mp3"
-      ? ["-i", prepared.inputName, "-map", "0:a:0", "-c:a", "libmp3lame", "-b:a", "192k", "-id3v2_version", "4", outputName]
-      : ["-i", prepared.inputName, "-f", "webvtt", "-i", subtitlePath,
+    var args: string[];
+    if (audioFormat === "mp3") {
+      var probe = JSON.parse(await runFFprobe(["-v", "quiet", "-print_format", "json", "-show_streams", prepared.inputName]));
+      var audioStream = probe.streams.find(function (stream: any) { return stream.codec_type === "audio"; });
+      args = ["-i", prepared.inputName, "-map", "0:a:0"];
+      // Preserve supported attached artwork, but do not map ordinary video to MP3.
+      probe.streams.filter(function (stream: any) { return stream.disposition?.attached_pic && ["png", "mjpeg"].includes(stream.codec_name); }).forEach(function (stream: any) {
+        args.push("-map", "0:" + stream.index);
+      });
+      if (audioStream?.codec_name === "mp3") args.push("-c:a", "copy");
+      else args.push("-c:a", "libmp3lame", "-b:a", "192k");
+      args.push("-c:v", "copy", "-id3v2_version", "3", outputName);
+    } else {
+      args = ["-i", prepared.inputName, "-f", "webvtt", "-i", subtitlePath,
         "-map", "0:a:0", "-map", "1:s:0", "-c:a", audioFormat === "m4a" ? "aac" : "libopus", "-b:a", audioFormat === "m4a" ? "192k" : "128k", "-c:s", audioFormat === "m4a" ? "mov_text" : "subrip", outputName];
+    }
     var core = await runFFmpeg(args);
     var encodedBlob = await readOutputBlob(core, outputName, audioFormat);
     var embeddedBlob = audioFormat === "mp3" ? await embedMp3Lyrics(encodedBlob, cues) : encodedBlob;
-    showDownload(embeddedBlob, outputName);
+    var companionBase = outputName.replace(/\.mp3$/i, "");
+    showDownload(embeddedBlob, outputName, audioFormat === "mp3" ? [
+      { name: companionBase + ".lrc", blob: new Blob([subtitleLrc(cues)], { type: "text/plain;charset=utf-8" }) },
+      { name: companionBase + ".vtt", blob: new Blob([subtitleVtt(cues)], { type: "text/vtt;charset=utf-8" }) }
+    ] : []);
     showSummary([{ label: t("format"), value: audioFormat.toUpperCase() }, { label: t("files"), value: String(cues.length) }, { label: t("size"), value: formatBytes(embeddedBlob.size) }]);
     await safeUnlink(core, prepared.inputName);
     if (audioFormat !== "mp3") await safeUnlink(core, subtitlePath);
@@ -2133,15 +2186,14 @@
       subtitleSucceeded = action === "subtitle";
     } catch (error) {
       progressUI.finish(cancelled ? "cancelled" : "failed");
-      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-      downloadUrl = "";
+      releaseDownloads();
       $("#resultBox").textContent = t("noOutput");
       $("#resultBox").dataset.hasOutput = "";
       if (cancelled) { $("#statusLine").textContent = currentLanguage === "zh" ? "已取消处理" : "Processing cancelled"; return; }
       setStatus("failed");
       var message = (error && error.message) || String(error);
       appendLog(message);
-      var describedError = (window as any).WebToolsControls.describeError(error);
+      var describedError = /memory access out of bounds|unreachable/i.test(message) ? t("audioEngineError") : (window as any).WebToolsControls.describeError(error);
       $("#resultBox").textContent = describedError;
       if (action === "subtitle") subtitleFeedback(describedError);
     } finally {
@@ -2184,6 +2236,10 @@
 
   function syncSpeedDefaultArgs() {
     $("#speedArgs").value = audioEncodeArgs($("#speedFormat").value);
+  }
+
+  function syncVolumeDefaultArgs() {
+    $("#volumeArgs").value = audioEncodeArgs($("#volumeFormat").value);
   }
 
   sortable.bind({
@@ -2279,6 +2335,7 @@
   $("#cutFormat").addEventListener("change", syncCutDefaultArgs);
   $("#remuxFormat").addEventListener("change", syncRemuxDefaultArgs);
   $("#speedFormat").addEventListener("change", syncSpeedDefaultArgs);
+  $("#volumeFormat").addEventListener("change", syncVolumeDefaultArgs);
   $("#speedInput").addEventListener("change", readSpeedFactor);
   $("#applyPreviewSpeed").addEventListener("click", applyPreviewSpeed);
   $("#openSubtitleEditor").addEventListener("click", openSubtitleEditor);
@@ -2351,5 +2408,6 @@
   syncCutDefaultArgs();
   syncRemuxDefaultArgs();
   syncSpeedDefaultArgs();
+  syncVolumeDefaultArgs();
   setTool("convert");
 })();
